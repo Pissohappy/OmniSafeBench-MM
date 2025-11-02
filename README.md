@@ -1,7 +1,7 @@
 # OmniSafeBench-MM
 A Unified Benchmark and Toolbox for Multimodal Jailbreak Attack–Defense Evaluation
 
-## Integrated Attack Methods
+## 🗡️ Integrated Attack Methods
 | Name | Full paper title | Paper | Code | Classification |
 |------|------------------|-------|------|----------------|
 | FigStep / FigStep-Pro | FigStep: Jailbreaking Large Vision-Language Models via Typographic Visual Prompts | [paper link](https://arxiv.org/abs/2311.05608) | [code link](https://github.com/ThuCCSLab/FigStep) | Black-box — Structured visual carriers |
