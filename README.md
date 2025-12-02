@@ -27,6 +27,7 @@ OmniSafeBench-MM is a unified benchmark and open-source toolbox for evaluating m
 <img src="assets/overview.png" alt="HarmBench Evaluation Pipeline"/>
 
 </div>
+
 **Overview of OmniSafeBench-MM**.
 The benchmark unifies multi-modal jailbreak attack–defense evaluation, 13 attack and 15 defense methods, and a three-dimensional scoring protocol measuring harmfulness, alignment, and detail.
 
@@ -51,22 +52,22 @@ The benchmark unifies multi-modal jailbreak attack–defense evaluation, 13 atta
 
 
 ## 🛡️Integrated Defense Methods
-| Name | Title                                                                                                              | Venue | Paper | Code | Classification |
-|---|--------------------------------------------------------------------------------------------------------------------|---|---|---|---|
-| JailGuard | JailGuard: A Universal Detection Framework for Prompt-based Attacks on LLM Systems                                 | arXiv | [link](https://arxiv.org/abs/2312.10766) | [link](https://github.com/shiningrain/JailGuard) | Off-Model — Input pre-processing |
-| MLLM-Protector | MLLM-Protector: Ensuring MLLM's Safety without Hurting Performance                                                 | EMNLP 2024 | [link](https://arxiv.org/abs/2401.02906) | [link](https://github.com/pipilurj/MLLM-protector) | Off-Model — Output post-processing |
-| ECSO | Eyes Closed, Safety On: Protecting Multimodal LLMs via Image-to-Text Transformation                                | ECCV 2024 | [link](https://arxiv.org/abs/2403.09572) | [link](https://gyhdog99.github.io/projects/ecso/) | Off-Model — Input pre-processing |
-| ShieldLM | ShieldLM: Empowering LLMs as Aligned, Customizable and Explainable Safety Detectors                                | EMNLP 2024 | [link](https://arxiv.org/abs/2402.16444) | [link](https://github.com/thu-coai/ShieldLM) | Off-Model — Output post-processing |
-| AdaShield | AdaShield: Safeguarding Multimodal Large Language Models from Structure-based Attack via Adaptive Shield Prompting | ECCV 2024 | [link](https://arxiv.org/abs/2403.09513) | [link](https://github.com/rain305f/AdaShield) | Off-Model — Input pre-processing |
-| Uniguard | UNIGUARD: Towards Universal Safety Guardrails for Jailbreak Attacks on Multimodal Large Language Models            | ECCV 2024 | [link](https://arxiv.org/abs/2411.01703) | [link](https://anonymous.4open.science/r/UniGuard/README.md) | Off-Model — Input pre-processing |
-| DPS | Defending LVLMs Against Vision Attacks Through Partial-Perception Supervision                                      | ICML 2025 | [link](https://arxiv.org/abs/2412.12722) | [link](https://github.com/tools-only/DPS) | Off-Model — Input pre-processing |
-| CIDER | Cross-modality Information Check for Detecting Jailbreaking in Multimodal Large Language Models                    | EMNLP 2024 | [link](https://arxiv.org/abs/2407.21659) | [link](https://github.com/PandragonXIII/CIDER) | Off-Model — Input pre-processing |
-| GuardReasoner-VL | GuardReasoner-VL: Safeguarding VLMs via Reinforced Reasoning                                                       | ICML 2025 | [link](https://arxiv.org/abs/2505.11049) | [link](https://github.com/yueliu1999/GuardReasoner-VL) | Off-Model — Input pre-processing |
-| Llama-Guard-4 | Llama Guard 4                                                                                                      | Model Card | [link](https://www.llama.com/docs/model-cards-and-prompt-formats/llama-guard-4/) | [link](https://huggingface.co/meta-llama/Llama-Guard-4-12B) | Off-Model — Input pre-processing |
-| QGuard | QGuard: Question-based Zero-shot Guard for Multi-modal LLM Safety                                                  | arXiv | [link](https://arxiv.org/abs/2506.12299) | [link](https://github.com/taegyeong-lee/QGuard-Question-based-Zero-shot-Guard-for-Multi-modal-LLM-Safety) | Off-Model — Input pre-processing |
-| LlavaGuard | LlavaGuard: An Open VLM-based Framework for Safeguarding Vision Datasets and Models                                | ICML 2025 | [link](https://arxiv.org/abs/2406.05113) | [link](https://github.com/ml-research/LlavaGuard) | Off-Model — Input pre-processing |
-| Llama-Guard-3 | Llama Guard 3                                                                                                      | Model Card | [link](https://www.llama.com/docs/model-cards-and-prompt-formats/llama-guard-3/) | [model link](https://huggingface.co/meta-llama/Llama-Guard-3-8B) | Off-Model — Output post-processing |
-| HiddenDetect | HiddenDetect: Detecting Jailbreak Attacks against Multimodal Large Language Models via Monitoring Hidden States    | ACL 2025 | [link](https://arxiv.org/abs/2502.14744) | [link](https://github.com/leigest519/HiddenDetect) | On-Model — Inference process intervention |
-| CoCA | CoCA: Regaining Safety-awareness of Multimodal Large Language Models with Constitutional Calibration               | COLM 2024 | [link](https://arxiv.org/abs/2409.11365) | Null | On-Model — Inference process intervention |
-| VLGuard | Safety Fine-Tuning at (Almost) No Cost: A Baseline for Vision Large Language Models                                | ICML 2024 | [link](https://arxiv.org/abs/2402.02207) | [link](https://github.com/ys-zong/VLGuard) | On-Model — Intrinsic model alignment |
+| Name | Title                                                                                                              | Venue | Paper | Code | 
+|---|--------------------------------------------------------------------------------------------------------------------|---|---|---|
+| JailGuard | JailGuard: A Universal Detection Framework for Prompt-based Attacks on LLM Systems                                 | arXiv | [link](https://arxiv.org/abs/2312.10766) | [link](https://github.com/shiningrain/JailGuard) |
+| MLLM-Protector | MLLM-Protector: Ensuring MLLM's Safety without Hurting Performance                                                 | EMNLP 2024 | [link](https://arxiv.org/abs/2401.02906) | [link](https://github.com/pipilurj/MLLM-protector) |
+| ECSO | Eyes Closed, Safety On: Protecting Multimodal LLMs via Image-to-Text Transformation                                | ECCV 2024 | [link](https://arxiv.org/abs/2403.09572) | [link](https://gyhdog99.github.io/projects/ecso/) | 
+| ShieldLM | ShieldLM: Empowering LLMs as Aligned, Customizable and Explainable Safety Detectors                                | EMNLP 2024 | [link](https://arxiv.org/abs/2402.16444) | [link](https://github.com/thu-coai/ShieldLM) | 
+| AdaShield | AdaShield: Safeguarding Multimodal Large Language Models from Structure-based Attack via Adaptive Shield Prompting | ECCV 2024 | [link](https://arxiv.org/abs/2403.09513) | [link](https://github.com/rain305f/AdaShield) |
+| Uniguard | UNIGUARD: Towards Universal Safety Guardrails for Jailbreak Attacks on Multimodal Large Language Models            | ECCV 2024 | [link](https://arxiv.org/abs/2411.01703) | [link](https://anonymous.4open.science/r/UniGuard/README.md) | 
+| DPS | Defending LVLMs Against Vision Attacks Through Partial-Perception Supervision                                      | ICML 2025 | [link](https://arxiv.org/abs/2412.12722) | [link](https://github.com/tools-only/DPS) | 
+| CIDER | Cross-modality Information Check for Detecting Jailbreaking in Multimodal Large Language Models                    | EMNLP 2024 | [link](https://arxiv.org/abs/2407.21659) | [link](https://github.com/PandragonXIII/CIDER) | 
+| GuardReasoner-VL | GuardReasoner-VL: Safeguarding VLMs via Reinforced Reasoning                                                       | ICML 2025 | [link](https://arxiv.org/abs/2505.11049) | [link](https://github.com/yueliu1999/GuardReasoner-VL) | 
+| Llama-Guard-4 | Llama Guard 4                                                                                                      | Model Card | [link](https://www.llama.com/docs/model-cards-and-prompt-formats/llama-guard-4/) | [link](https://huggingface.co/meta-llama/Llama-Guard-4-12B) | 
+| QGuard | QGuard: Question-based Zero-shot Guard for Multi-modal LLM Safety                                                  | arXiv | [link](https://arxiv.org/abs/2506.12299) | [link](https://github.com/taegyeong-lee/QGuard-Question-based-Zero-shot-Guard-for-Multi-modal-LLM-Safety) | 
+| LlavaGuard | LlavaGuard: An Open VLM-based Framework for Safeguarding Vision Datasets and Models                                | ICML 2025 | [link](https://arxiv.org/abs/2406.05113) | [link](https://github.com/ml-research/LlavaGuard) |
+| Llama-Guard-3 | Llama Guard 3                                                                                                      | Model Card | [link](https://www.llama.com/docs/model-cards-and-prompt-formats/llama-guard-3/) | [model link](https://huggingface.co/meta-llama/Llama-Guard-3-8B) | 
+| HiddenDetect | HiddenDetect: Detecting Jailbreak Attacks against Multimodal Large Language Models via Monitoring Hidden States    | ACL 2025 | [link](https://arxiv.org/abs/2502.14744) | [link](https://github.com/leigest519/HiddenDetect) |
+| CoCA | CoCA: Regaining Safety-awareness of Multimodal Large Language Models with Constitutional Calibration               | COLM 2024 | [link](https://arxiv.org/abs/2409.11365) | Null | 
+| VLGuard | Safety Fine-Tuning at (Almost) No Cost: A Baseline for Vision Large Language Models                                | ICML 2024 | [link](https://arxiv.org/abs/2402.02207) | [link](https://github.com/ys-zong/VLGuard) | 
 > More methods are coming soon!!
