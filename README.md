@@ -114,6 +114,70 @@ Depending on the attack/defense methods used, the following additional configura
      - Download: 256x256 diffusion (not class conditional): `256x256_diffusion_uncond.pt`
   2. Place the model file in: `models/diffusion_denoiser/imagenet/`
 
+
+- **vLLM Deployment**:
+  Some defense models in this project (e.g., ShieldLM, GuardReasoner-VL, LlavaGuard, Llama-Guard-3, Llama-Guard-4) are deployed using vLLM. vLLM is a high-performance inference and serving framework for large language models, providing OpenAI-compatible API services.
+  
+  **About vLLM**:
+  - vLLM is an open-source framework for fast deployment and inference of large language models
+  - Supports various open-source models (e.g., Qwen, LLaVA, Llama, etc.)
+  - Provides OpenAI-compatible API interface for easy integration
+  - Features efficient inference performance and batch processing capabilities
+  
+  **Usage Steps**:
+  1. **Install vLLM**:
+     ```bash
+     pip install vllm
+     # Or install the latest version from source
+     pip install git+https://github.com/vllm-project/vllm.git
+     ```
+  
+  2. **Start vLLM Service**:
+     For vision-language models, use the following command to start the service:
+     ```bash
+     python -m vllm.entrypoints.openai.api_server \
+         --model <model_path_or_huggingface_name> \
+         --port <port_number> \
+         --trust-remote-code \
+         --dtype half
+     ```
+     For example, to deploy the LlavaGuard model:
+     ```bash
+     python -m vllm.entrypoints.openai.api_server \
+         --model <llavaguard_model_path> \
+         --port 8022 \
+         --trust-remote-code \
+         --dtype half
+     ```
+  
+  3. **Configure Models**:
+     Configure vLLM-deployed models in `config/model_config.yaml`:
+     ```yaml
+     providers:
+       vllm:
+         api_key: "dummy"  # vLLM does not require a real API key
+         base_url: "http://localhost:8000/v1"  # Default base_url
+         models:
+           llavaguard:
+             model_name: llavaguard
+             max_tokens: 1000
+             temperature: 0.0
+             base_url: "http://localhost:8022/v1"  # Model-specific port
+     ```
+  
+  4. **Verify Service**:
+     After starting the service, verify it with:
+     ```bash
+     curl http://localhost:8022/v1/models
+     ```
+  
+  **Notes**:
+  - Ensure each model uses a different port number to avoid conflicts
+  - Adjust `--gpu-memory-utilization` parameter based on model size and GPU memory
+  - For multimodal models, ensure relevant dependencies are installed (e.g., transformers, torch, etc.)
+  - It is recommended to use `--dtype half` or `--dtype bfloat16` to save GPU memory
+
+
 ## 💻 Running Examples (Stage-by-Stage / Specified Files)
 
 - **Generate test cases only**:
