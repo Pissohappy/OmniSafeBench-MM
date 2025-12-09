@@ -1,0 +1,5 @@
+name: "hiddendetect"
+parameters:
+  llava-v1.6-vicuna-7b: /path/to/liuhaotian/llava-v1.6-vicuna-7b
+  default_threshold: 0.2
+  load_model: true

@@ -1,0 +1,7 @@
+name: "mllm_protector"
+
+parameters:
+  detector-open-llama-3b: /path/to/MLLM-protector-detector-open-llama-3b
+  detoxifier-llama2-7b: /path/to/MLLM-protector-detoxifier-llama2-7b
+  default_detector_model: detector-open-llama-3b
+  default_detoxifier_model: detoxifier-llama2-7b

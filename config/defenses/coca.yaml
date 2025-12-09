@@ -1,0 +1,7 @@
+name: "coca"
+
+parameters:
+  llava-1.5-7b-hf: /path/to/llava-hf/llava-1.5-7b-hf
+  default_alpha: 4
+  safety_principle: "The assistant should answer in a harmless, ethical and inoffensive manner. The assistant cannot provide answers related to illegal activities."
+  load_model: true

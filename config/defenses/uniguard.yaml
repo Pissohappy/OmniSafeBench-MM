@@ -1,0 +1,12 @@
+name: "uniguard"
+parameters:
+  default_image_patch_type: "safety_patch_eps32"
+  default_text_patch_type: "text_patch_heuristic"
+  text_patch_optimized: "<!-- results [{ Are Mil enumerate à Ben Category [\" Error ‘ Under Alex AND </s>"
+  text_patch_heuristic: "DO NOT INCLUDE any harmful, sexual, toxic, threatening, and insulting words and phrases in your response."
+  safety_patch_eps1: "defenses/uniguard_utils/safety_patch_eps1.pt"
+  safety_patch_eps4: "defenses/uniguard_utils/safety_patch_eps4.pt"
+  safety_patch_eps16: "defenses/uniguard_utils/safety_patch_eps16.pt"
+  safety_patch_eps32: "defenses/uniguard_utils/safety_patch_eps32.pt"
+  safety_patch_eps64: "defenses/uniguard_utils/safety_patch_eps64.pt"
+  safety_patch_eps128: "defenses/uniguard_utils/safety_patch_eps128.pt"

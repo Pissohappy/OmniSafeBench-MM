@@ -1,0 +1,6 @@
+name: "qguard"
+
+parameters:
+  QGuard_model: "/path/to/OpenGVLab/InternVL2_5-4B"
+  default_threshold: 0.6
+  default_guard_question: "defenses/QGuard_questions.json"

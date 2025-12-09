@@ -1,0 +1,6 @@
+name: "jailguard"
+
+parameters:
+  default_mutator: PL
+  default_number: 8
+  default_threshold: 0.02

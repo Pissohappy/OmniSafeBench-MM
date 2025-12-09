@@ -1,0 +1,6 @@
+name: "cider"
+parameters:
+  default_threshold: -0.00286865234375
+  llava_path: /path/to/llava-hf/llava-1.5-7b-hf
+  denoiser_diffusion_path: defenses/cider_checkpoint.pth.tar
+  data_path: dataset/data_test.json

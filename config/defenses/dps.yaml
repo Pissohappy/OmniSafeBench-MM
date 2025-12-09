@@ -1,0 +1,5 @@
+name: "dps"
+
+parameters:
+  default_crop_model_name: "gpt-4o"
+  default_crop: "auto_crop"

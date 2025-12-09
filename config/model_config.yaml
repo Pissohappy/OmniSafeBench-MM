@@ -1,0 +1,150 @@
+# Jailbreak VLM Model Configuration File - New Structure
+# Supports managing multiple models under providers, models can override provider configurations
+
+# ============ Provider Configuration ============
+# Format:
+# providers:
+#   provider_name:
+#     api_key: ${ENV_VAR}  # Read from environment variable
+#     base_url: null       # Optional, default base_url
+#     models:
+#       model_name:
+#         model_name: "Actual model name"
+#         max_tokens: 1000
+#         temperature: 0.0
+#         base_url: "Custom URL"  # Optional, override provider's base_url
+#         api_key: ${CUSTOM_KEY} # Optional, override provider's api_key
+
+providers:
+  # OpenAI Provider
+  openai:
+    api_key: "sk-your-openai-api-key-here"  # Write specific API key directly
+    base_url: null  # Use OpenAI official API
+    models:
+      gpt-5:
+        model_name: "gpt-5"
+        max_tokens: 1000
+        temperature: 0.0
+      gpt-4-turbo:
+        model_name: "gpt-4-turbo"
+        max_tokens: 1000
+        temperature: 0.0
+
+  # Google Gemini Provider
+  google:
+    api_key: "your-google-api-key-here"  # Write specific API key directly
+    models:
+      gemini-2.5-flash:
+        model_name: "gemini-2.5-flash"
+        max_tokens: 1000
+        temperature: 0.0
+      gemini-2.5-pro:
+        model_name: "gemini-2.5-pro"
+        max_tokens: 2000
+        temperature: 0.0
+
+  # Anthropic Claude Provider
+  anthropic:
+    api_key: "sk-ant-your-anthropic-api-key-here"  # Write specific API key directly
+    models:
+      claude-sonnet-4:
+        model_name: "claude-3-5-sonnet-20241022"
+        max_tokens: 4000
+        temperature: 0.0
+      claude-haiku:
+        model_name: "claude-3-haiku-20240307"
+        max_tokens: 4000
+        temperature: 0.0
+
+  # Qwen (Aliyun) Provider
+  qwen:
+    api_key: "your-qwen-api-key-here"  # Write specific API key directly
+    models:
+      qwen3-vl-plus:
+        model_name: "qwen3-vl-plus"
+        max_tokens: 2000
+        temperature: 0.0
+      qwen3-vl-flash:
+        model_name: "qwen3-vl-flash"
+        max_tokens: 2000
+        temperature: 0.0
+
+  # ByteDance (Doubao) Provider
+  doubao:
+    api_key: "your-doubao-api-key-here"  # Write specific API key directly
+    models:
+      doubao-vision-lite:
+        model_name: "doubao-1.5-vision-lite-250315"
+        max_tokens: 2000
+        temperature: 0.0
+
+  # vLLM Open Source Model Provider
+  vllm:
+    api_key: "dummy"  # vLLM does not require a real API key
+    base_url: "http://localhost:8000/v1"  # Default base_url
+    models:
+      # target model
+      qwen3-vl-30b:
+        model_name: "Qwen3-VL-30B-A3B-Instruct"
+        max_tokens: 1000
+        temperature: 0.0
+        base_url: "http://localhost:8008/v1"  # Model-level override
+
+      # defense model
+
+      ShieldLM-14B-qwen:
+        model_name: ShieldLM-14B-qwen
+        max_tokens: 2000
+        temperature: 0.0
+        base_url: "http://localhost:8020/v1"
+      guardreasoner_vl:
+        model_name: guardreasoner_vl
+        max_tokens: 10000
+        temperature: 0.0
+        base_url: "http://localhost:8021/v1"
+      llavaguard:
+        model_name: llavaguard
+        max_tokens: 1000
+        temperature: 0.0
+        base_url: "http://localhost:8022/v1"
+      llama_guard_3:
+        model_name: llama_guard_3
+        max_tokens: 1000
+        temperature: 0.0
+        base_url: "http://localhost:8023/v1"
+      llama_guard_4:
+        model_name: llama_guard_4
+        max_tokens: 1000
+        temperature: 0.0
+        base_url: "http://localhost:8024/v1"
+
+      # evaluation model
+      gpt-oss:120b:
+        model_name: "gpt-oss:120b"
+        max_tokens: 1000
+        temperature: 0.0
+        base_url: "http://localhost:8005/v1"
+
+  # Any platform compatible with OpenAI
+  any:
+    api_key: "your-api-key"  # Write specific API key directly
+    base_url: "your-base-url"  # Model-level override
+    models:
+      gpt-4o:
+        model_name: "gpt-4o"
+        max_tokens: 2000
+        temperature: 0.0
+      gpt-3.5-turbo:
+        model_name: "gpt-3.5-turbo"
+        max_tokens: 1000
+        temperature: 0.0
+      gpt-4o-mini:
+        model_name: "gpt-4o-mini"
+        max_tokens: 2000
+        temperature: 0.0
+
+# ============ Model Default Configuration ============
+defaults:
+  max_tokens: 1000
+  temperature: 0.0
+  log_level: "INFO"

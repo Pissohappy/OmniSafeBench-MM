@@ -1,0 +1,4 @@
+name: "llama_guard_4"
+
+parameters:
+  model_name: llama_guard_4

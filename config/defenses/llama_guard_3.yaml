@@ -1,0 +1,4 @@
+name: "llama_guard_3"
+
+parameters:
+  Llama-Guard-3: /path/to/meta-llama/Llama-Guard-3-11B-Vision

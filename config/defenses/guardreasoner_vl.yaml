@@ -1,0 +1,4 @@
+name: "guardreasoner_vl"
+
+parameters:
+  defense_model_name: guardreasoner_vl

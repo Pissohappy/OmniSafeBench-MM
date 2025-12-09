@@ -1,0 +1,8 @@
+name: "vlguard"
+
+parameters:
+  # Model configuration
+  llava-v1.5-7b-vlguard: "/path/to/ys-zong/llava-v1.5-7b-Mixed"
+  temperature: 0.0
+  max_tokens: 1000
+  load_model: true

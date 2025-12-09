@@ -1,0 +1,5 @@
+name: "llavaguard"
+
+parameters:
+  policy: defenses/Llavaguard_policy_v1.txt
+  defense_model_name: llavaguard
