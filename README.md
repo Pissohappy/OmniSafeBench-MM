@@ -42,8 +42,18 @@ A one-stop multimodal jailbreak/defense evaluation framework for beginners, cove
 
 1. **Requirements**: Python 3.10+, recommended to use `uv` or `pip`.
 2. **Install dependencies** (choose one):
-   - `uv sync`
-   - `pip install -e .`
+   - **Recommended (uv, uses `uv.lock`)**:
+     - `uv sync`
+   - **Editable install (uv)**:
+     - `uv pip install -e .`
+   - **Editable install (pip)**:
+     - Note: this project pins PyTorch as `torch==2.6.0+cu118` / `torchvision==0.21.0+cu118`.
+       These CUDA wheels are **NOT** on PyPI, so plain `pip install -e .` will fail unless you add the PyTorch CUDA index.
+     - CUDA 11.8:
+       - `pip install -e . --extra-index-url https://download.pytorch.org/whl/cu118`
+     - If you prefer installing PyTorch first (often more reliable on servers):
+       - `pip install torch==2.6.0+cu118 torchvision==0.21.0+cu118 --index-url https://download.pytorch.org/whl/cu118`
+       - `pip install -e . --no-deps`
 3. **Prepare configuration**: By default, uses `config/general_config.yaml`, `config/model_config.yaml`, and `config/attacks/*.yaml`, `config/defenses/*.yaml`.
 4. **Run the full pipeline** (generate test cases → responses → evaluation):
    - `python run_pipeline.py --config config/general_config.yaml --full`
@@ -144,10 +154,10 @@ Depending on the attack/defense methods used, the following additional configura
 - **Generate test cases only**:
   - `python run_pipeline.py --config config/general_config.yaml --stage test_case_generation`
 - **Generate model responses from specified test_case JSON**:
-  - `python run_pipeline.py --config config/general_config.yaml --stage response_generation --test-cases-file /abs/path/to/test_cases.json`
+  - `python run_pipeline.py --config config/general_config.yaml --stage response_generation --test-cases-file /abs/path/to/test_cases.jsonl`
   - Equivalent: Fill in the file path in `config.response_generation.input_test_cases`.
 - **Generate evaluation results from specified response JSON**:
-  - `python run_pipeline.py --config config/general_config.yaml --stage evaluation --input-file /abs/path/to/responses.json`
+  - `python run_pipeline.py --config config/general_config.yaml --stage evaluation --input-file /abs/path/to/responses.jsonl`
   - Equivalent: Fill in the file path in `config.evaluation.input_responses`.
 - **Run combined stages**:
   - `python run_pipeline.py --config config/general_config.yaml --stages test_case_generation,response_generation,evaluation`
@@ -156,7 +166,7 @@ Depending on the attack/defense methods used, the following additional configura
 - These white-box attack methods use MiniGPT-4 as the target model when generating test cases, but **do not automatically generate responses**.
 - After generating test cases, you need to **run MiniGPT-4 separately** to process the attack-generated test case data and generate responses.
 - Specific steps:
-  1. First run the test case generation stage to obtain the attack-generated test case files (located at `output/test_cases/<attack>/<target_model>/...json`)
+  1. First run the test case generation stage to obtain the attack-generated test case files (located at `output/test_cases/<attack>/<target_model>/...jsonl`)
   2. Use the MiniGPT-4 model separately to process these test cases and generate responses (you need to write your own script or use the framework's response_generation stage, but ensure the MiniGPT-4 model is properly configured)
   3. After saving the generated responses as a JSON file, run the evaluation stage
 
@@ -173,8 +183,8 @@ Depending on the attack/defense methods used, the following additional configura
 - **Attack/Defense configuration**: `config/attacks/*.yaml`, `config/defenses/*.yaml`
   - Fill in the parameters required by each method in `parameters`, which can be overridden in `general_config.yaml` using `attack_params` / `defense_params`.
 - **Directly specify input files**:
-  - Response stage: `response_generation.input_test_cases: /abs/path/to/test_cases.json`
-  - Evaluation stage: `evaluation.input_responses: /abs/path/to/responses.json`
+  - Response stage: `response_generation.input_test_cases: /abs/path/to/test_cases.jsonl`
+  - Evaluation stage: `evaluation.input_responses: /abs/path/to/responses.jsonl`
 
 ## 📊 Input/Output Formats for Each Stage
 
@@ -221,7 +231,7 @@ Depending on the attack/defense methods used, the following additional configura
 
 **Input Format** (Test Cases JSON):
 - Same format as the output of Stage 1
-- Can be loaded from `output/test_cases/<attack>/<target_model>/...json` or specified via `response_generation.input_test_cases`
+- Can be loaded from `output/test_cases/<attack>/<target_model>/...jsonl` or specified via `response_generation.input_test_cases`
 
 **Output Format** (Model Responses JSON):
 ```json
@@ -251,7 +261,7 @@ Depending on the attack/defense methods used, the following additional configura
 
 **Input Format** (Model Responses JSON):
 - Same format as the output of Stage 2
-- Can be loaded from `output/responses/<defense>/attack_<attack>_model_<model>.json` or specified via `evaluation.input_responses`
+- Can be loaded from `output/responses/<defense>/attack_<attack>_model_<model>.jsonl` or specified via `evaluation.input_responses`
 
 **Output Format** (Evaluation Results JSON):
 ```json
@@ -288,9 +298,9 @@ Depending on the attack/defense methods used, the following additional configura
 
 ## 📁 Output Directory Structure (Default `output/`)
 
-- `test_cases/<attack>/<target_model>/...json`: Test cases
-- `responses/<defense>/attack_<attack>_model_<model>.json`: Model responses
-- `evaluations/attack_<attack>_model_<model>_defense_<defense>.json`: Evaluation results
+- `test_cases/<attack>/<target_model>/...jsonl`: Test cases
+- `responses/<defense>/attack_<attack>_model_<model>.jsonl`: Model responses
+- `evaluations/attack_<attack>_model_<model>_defense_<defense>_evaluator_<evaluator>.jsonl`: Evaluation results
 
 ## 🔧 Custom Components (Requires Registry Mapping Declaration)
 
@@ -299,8 +309,8 @@ When adding new components, please:
    - Attack: `core.base_classes.BaseAttack`
    - Defense: `core.base_classes.BaseDefense`
    - Model: `models.base_model.BaseModel`
-   - Evaluator: `evaluators.base_evaluator.BaseEvaluator`
-2. **Register**: Edit the mapping table in `core/registry_init.py`, add `name: ("module.path", "ClassName")`.
+  - Evaluator: `core.base_classes.BaseEvaluator`
+2. **Register**: Edit `config/plugins.yaml`, add `name: [ "module.path", "ClassName" ]` under the appropriate section.
 3. **Configure**: Add configuration files for the new component
    - Attack: `config/attacks/<name>.yaml`, and enable it in the `test_case_generation.attacks` list in `general_config.yaml`.
    - Defense: `config/defenses/<name>.yaml`, and enable it in the `response_generation.defenses` list in `general_config.yaml`.
@@ -357,9 +367,9 @@ When adding new components, please:
 ## ❓ FAQ
 
 - **How to re-run evaluation only?**
-  Directly use existing responses file: `--stage evaluation --input-file /abs/path/to/responses.json`.
+  Directly use existing responses file: `--stage evaluation --input-file /abs/path/to/responses.jsonl`.
 - **How to skip defense?**
   Keep only `"None"` in `response_generation.defenses`.
 - **API key reading?**
   Fill directly in `config/model_config.yaml`;
-- **Pre-development check**: Ensure new components are mapped in `registry_init.py` and have corresponding configuration files.
+- **Pre-development check**: Ensure new components are mapped in `config/plugins.yaml` and have corresponding configuration files.

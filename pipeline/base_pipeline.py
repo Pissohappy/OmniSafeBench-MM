@@ -77,10 +77,10 @@ class BasePipeline(ABC):
             if target_model_name:
                 return (
                     image_dir,
-                    attack_dir / f"target_model_{target_model_name}_test_cases.json",
+                    attack_dir / f"target_model_{target_model_name}_test_cases.jsonl",
                 )
             else:
-                return image_dir, attack_dir / "test_cases.json"
+                return image_dir, attack_dir / "test_cases.jsonl"
 
         elif stage_name == "response_generation":
             # Response filename: Each model+defense method combination is saved separately
@@ -100,7 +100,7 @@ class BasePipeline(ABC):
                 # Create defense method folder
                 defense_dir = output_dir / defense_name
                 defense_dir.mkdir(parents=True, exist_ok=True)
-                return None, defense_dir / f"{'_'.join(parts)}.json"
+                return None, defense_dir / f"{'_'.join(parts)}.jsonl"
             else:
                 raise
 
@@ -109,6 +109,7 @@ class BasePipeline(ABC):
             attack_name = context.get("attack_name")
             model_name = context.get("model_name")
             defense_name = context.get("defense_name")
+            evaluator_name = context.get("evaluator_name", None)
             target_model_name = context.get("target_model_name", None)
             parts = []
             if attack_name:
@@ -119,8 +120,11 @@ class BasePipeline(ABC):
                 parts.append(f"model_{model_name}")
             if defense_name:
                 parts.append(f"defense_{defense_name}")
+            # IMPORTANT: evaluator dimension must be part of the filename to avoid collisions
+            if evaluator_name:
+                parts.append(f"evaluator_{evaluator_name}")
             if parts:
-                return None, output_dir / f"{'_'.join(parts)}.json"
+                return None, output_dir / f"{'_'.join(parts)}.jsonl"
             else:
                 raise
         else:
@@ -144,8 +148,62 @@ class BasePipeline(ABC):
         """
         if not filepath.exists():
             return []
+        return self._load_json_or_jsonl(filepath)
+
+    def _load_json_or_jsonl(self, filepath: Path) -> List[Dict]:
+        """Load a JSON list file (.json) or JSON Lines file (.jsonl) into a list of dicts."""
+        # Prefer suffix hint; otherwise sniff by first non-whitespace char.
+        suffix = filepath.suffix.lower()
+        try:
+            if suffix == ".jsonl":
+                return self._load_jsonl(filepath)
+            if suffix == ".json":
+                return self._load_json_list(filepath)
+        except Exception:
+            # If suffix-based attempt fails, fall back to sniffing
+            pass
+
+        # Sniff format
         with open(filepath, "r", encoding="utf-8") as f:
-            return json.load(f)
+            for line in f:
+                stripped = line.lstrip()
+                if not stripped:
+                    continue
+                if stripped.startswith("["):
+                    return self._load_json_list(filepath)
+                return self._load_jsonl(filepath)
+        return []
+
+    def _load_json_list(self, filepath: Path) -> List[Dict]:
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, list):
+            raise ValueError(
+                f"Unsupported JSON format {filepath}: expected list, got {type(data).__name__}"
+            )
+        return data
+
+    def _load_jsonl(self, filepath: Path) -> List[Dict]:
+        items: List[Dict] = []
+        with open(filepath, "r", encoding="utf-8") as f:
+            for line_no, line in enumerate(f, start=1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError as e:
+                    raise ValueError(
+                        f"JSONL parsing failed {filepath}: line {line_no}: {e.msg}"
+                    ) from e
+                if obj is None:
+                    continue
+                if not isinstance(obj, dict):
+                    raise ValueError(
+                        f"Unsupported JSONL item {filepath}: line {line_no}: expected dict, got {type(obj).__name__}"
+                    )
+                items.append(obj)
+        return items
 
     def load_data_files(
         self,
@@ -277,21 +335,8 @@ class BasePipeline(ABC):
             List of data objects
         """
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                try:
-                    data_list = json.load(f)
-                except json.JSONDecodeError as e:
-                    self.logger.error(
-                        f"JSON parsing failed {file_path}: Line {e.lineno}, Column {e.colno}, Error: {e.msg}",
-                        exc_info=True,
-                    )
-                    return []
-
-            if not isinstance(data_list, list):
-                self.logger.error(
-                    f"Unsupported file format {file_path}: Expected list type, got {type(data_list).__name__}, currently only JSON list format is supported"
-                )
-                return []
+            # Support both JSON list and JSONL
+            data_list = self._load_json_or_jsonl(file_path)
 
             parsed_data = []
             parse_failures = 0
@@ -341,31 +386,57 @@ class BasePipeline(ABC):
     def save_results_incrementally(self, results: List[Dict], filepath: Path) -> str:
         """Incrementally save results to file"""
         # filepath = self.output_dir / filename
+        # Default to JSONL if suffix is .jsonl; otherwise keep JSON list behavior.
+        if filepath.suffix.lower() == ".jsonl":
+            return self._append_results_jsonl(results, filepath)
+        return self._save_results_json_list_dedup(results, filepath)
 
-        # If file exists, load existing results
+    def _append_results_jsonl(self, results: List[Dict], filepath: Path) -> str:
+        """Append results to a JSONL file with basic dedup by test_case_id (read ids once)."""
+        existing_ids: Set[str] = set()
+        if filepath.exists():
+            try:
+                for item in self._load_jsonl(filepath):
+                    rid = item.get("test_case_id")
+                    if rid:
+                        existing_ids.add(rid)
+            except Exception as e:
+                self.logger.warning(f"Failed to read existing JSONL for dedup: {filepath}: {e}")
+
+        new_count = 0
+        with open(filepath, "a", encoding="utf-8") as f:
+            for result in results:
+                rid = result.get("test_case_id")
+                if rid and rid in existing_ids:
+                    continue
+                f.write(json.dumps(result, ensure_ascii=False) + "\n")
+                new_count += 1
+                if rid:
+                    existing_ids.add(rid)
+
+        self.logger.info(
+            f"Incremental JSONL append completed: {new_count} new results, file={filepath}"
+        )
+        return str(filepath)
+
+    def _save_results_json_list_dedup(self, results: List[Dict], filepath: Path) -> str:
+        """Legacy JSON list incremental save (atomic rewrite with dedup)."""
         existing_results = []
         if filepath.exists():
             try:
-                with open(filepath, "r", encoding="utf-8") as f:
-                    existing_results = json.load(f)
+                existing_results = self._load_json_list(filepath)
                 self.logger.info(f"Loaded {len(existing_results)} existing results")
             except Exception as e:
                 self.logger.warning(f"Failed to load existing results: {e}")
 
-        # Merge results (deduplicate based on test_case_id)
-        # Use dictionary to ensure each test_case_id only keeps one result (new result takes priority)
-        results_by_id = {}
-
-        # First add existing results
+        results_by_id: Dict[str, Dict] = {}
         for result in existing_results:
             result_id = result.get("test_case_id")
             if result_id:
                 results_by_id[result_id] = result
             else:
-                # Results without test_case_id, use index as temporary key
                 results_by_id[f"__no_id_{id(result)}"] = result
 
-        # Then add new results (will overwrite old results with same test_case_id)
         new_count = 0
         for result in results:
             result_id = result.get("test_case_id")
@@ -374,32 +445,23 @@ class BasePipeline(ABC):
                     new_count += 1
                 results_by_id[result_id] = result
             else:
-                # Results without test_case_id, directly append
                 results_by_id[f"__no_id_{id(result)}"] = result
                 new_count += 1
 
-        # Convert back to list
         all_results = list(results_by_id.values())
-
-        # Atomic write: write to temporary file first, then rename
         temp_file = filepath.with_suffix(".tmp")
         try:
             with open(temp_file, "w", encoding="utf-8") as f:
                 json.dump(all_results, f, ensure_ascii=False, indent=2)
-
-            # Rename temporary file to official file
             temp_file.rename(filepath)
-
             self.logger.info(
                 f"Incremental save completed: {new_count} new results, total {len(all_results)} results"
             )
-
         except Exception as e:
             self.logger.error(f"Incremental save failed: {e}")
             if temp_file.exists():
                 temp_file.unlink()
             raise
-
         return str(filepath)
 
     def save_single_result(self, result: Dict, filename: str) -> str:
@@ -724,3 +786,29 @@ def process_with_strategy(
         all_results = [r for r in results if r is not None]
 
     return all_results
+
+
+def parallel_process_with_batch_save(
+    items: List[Any],
+    process_func: Callable[[Any], Dict],
+    pipeline: BasePipeline,
+    output_filename: Path,
+    batch_size: int = None,
+    max_workers: int = None,
+    desc: str = "Processing",
+) -> List[Dict]:
+    """
+    Backward-compatible helper for tests/older code.
+
+    This is equivalent to `process_with_strategy(..., strategy_name="parallel")`.
+    """
+    return process_with_strategy(
+        items=items,
+        process_func=process_func,
+        pipeline=pipeline,
+        output_filename=output_filename,
+        batch_size=batch_size,
+        max_workers=max_workers,
+        desc=desc,
+        strategy_name="parallel",
+    )

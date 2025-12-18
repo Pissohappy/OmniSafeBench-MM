@@ -1,4 +1,4 @@
-from .base_defense import BaseDefense
+from core.base_classes import BaseDefense
 from core.data_formats import TestCase
 
 

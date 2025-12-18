@@ -14,7 +14,7 @@ import importlib
 import logging
 
 from core.data_formats import TestCase
-from core.unified_registry import BaseAttack
+from core.base_classes import BaseAttack
 from core.unified_registry import UNIFIED_REGISTRY
 from config.config_loader import get_model_config
 
@@ -339,14 +339,10 @@ Feel free to use these strategies or come up with your own. At the end of your r
         # CoT optimize prompt
         optimized_prompt, cot_log = self._optimize_prompt_with_cot(original_prompt)
 
-        return TestCase(
-            test_case_id=case_id,
-            prompt=optimized_prompt,
-            image_path=vap_save_path,
-            metadata={
-                "attack_method": "bap",
-                "original_prompt": original_prompt,
-                "jailbreak_prompt": optimized_prompt,
-                "jailbreak_image_path": vap_save_path,
-            },
+        return self.create_test_case(
+            case_id=case_id,
+            jailbreak_prompt=optimized_prompt,
+            jailbreak_image_path=str(vap_save_path),
+            original_prompt=original_prompt,
+            original_image_path=str(image_path),
         )

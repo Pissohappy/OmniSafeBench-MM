@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional, Union, Dict, Any
+import inspect
 import backoff
 from core.base_classes import BaseModel as CoreBaseModel
 from core.data_formats import TestCase, ModelResponse
@@ -24,6 +25,47 @@ class BaseModel(CoreBaseModel):
         self.api_key = api_key
         self.base_url = base_url
         self.model_type = self._determine_model_type()
+
+    @classmethod
+    def from_config(cls, name: str, config: Dict[str, Any] | None = None):
+        """
+        Unified factory method: build model instance from a config dict.
+
+        This is intentionally signature-aware: it only passes kwargs that the concrete
+        model class' __init__ accepts, so providers with different constructor
+        signatures won't break.
+        """
+        config = config or {}
+
+        # model_name in config takes priority; fall back to the alias name
+        model_name = config.get("model_name", name)
+        api_key = config.get("api_key", "")
+        base_url = config.get("base_url", None)
+
+        init_kwargs = {
+            "model_name": model_name,
+            "api_key": api_key,
+            "base_url": base_url,
+        }
+
+        # Filter kwargs by the concrete __init__ signature
+        try:
+            sig = inspect.signature(cls.__init__)
+            accepted = {
+                p.name
+                for p in sig.parameters.values()
+                if p.name != "self"
+                and p.kind
+                in (
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    inspect.Parameter.KEYWORD_ONLY,
+                )
+            }
+            filtered_kwargs = {k: v for k, v in init_kwargs.items() if k in accepted}
+            return cls(**filtered_kwargs)
+        except Exception:
+            # Fallback: best-effort positional init
+            return cls(model_name=model_name, api_key=api_key, base_url=base_url)
 
     def _determine_model_type(self):
         """Determine model type: api (API call) or local (local loading)"""
@@ -91,8 +133,7 @@ class BaseModel(CoreBaseModel):
 
         # Generate response
         response = self.generate(messages, **kwargs)
-
-        response_text = response.choices[0].message.content
+        response_text = self._extract_text(response)
 
         return ModelResponse(
             test_case_id=test_case.test_case_id,
@@ -100,6 +141,107 @@ class BaseModel(CoreBaseModel):
             model_name=self.model_name,
             metadata=test_case.metadata,
         )
+
+    def _extract_text(self, response_obj: Any) -> str:
+        """
+        Extract plain text from various provider SDK response objects.
+
+        Why this exists:
+        - Some providers return OpenAI-like objects with `.choices[0].message.content`
+        - Some return `.text` (e.g., certain Gemini SDK objects)
+        - Some return `content` blocks (e.g., Anthropic)
+        - Our retry/error handling may return a string placeholder directly
+        """
+        if response_obj is None:
+            return ""
+
+        # Placeholder / already-a-text
+        if isinstance(response_obj, str):
+            return response_obj
+
+        # Dict-like responses
+        if isinstance(response_obj, dict):
+            # OpenAI-like dict
+            if "choices" in response_obj and response_obj["choices"]:
+                try:
+                    choice0 = response_obj["choices"][0]
+                    # message.content
+                    if isinstance(choice0, dict):
+                        msg = choice0.get("message")
+                        if isinstance(msg, dict) and isinstance(msg.get("content"), str):
+                            return msg["content"]
+                        delta = choice0.get("delta")
+                        if isinstance(delta, dict) and isinstance(delta.get("content"), str):
+                            return delta["content"]
+                except Exception:
+                    pass
+            if isinstance(response_obj.get("text"), str):
+                return response_obj["text"]
+            content = response_obj.get("content")
+            if isinstance(content, str):
+                return content
+            if isinstance(content, list):
+                texts = []
+                for block in content:
+                    if isinstance(block, str):
+                        texts.append(block)
+                    elif isinstance(block, dict) and isinstance(block.get("text"), str):
+                        texts.append(block["text"])
+                if texts:
+                    return "".join(texts)
+
+            return str(response_obj)
+
+        # OpenAI-like objects: response.choices[0].message.content
+        try:
+            choices = getattr(response_obj, "choices", None)
+            if choices and len(choices) > 0:
+                choice0 = choices[0]
+                msg = getattr(choice0, "message", None)
+                if msg is not None:
+                    content = getattr(msg, "content", None)
+                    if isinstance(content, str):
+                        return content
+                # Some SDKs expose delta for streaming chunks
+                delta = getattr(choice0, "delta", None)
+                if delta is not None:
+                    delta_content = getattr(delta, "content", None)
+                    if isinstance(delta_content, str):
+                        return delta_content
+        except Exception:
+            pass
+
+        # Gemini-like objects: response.text
+        try:
+            text = getattr(response_obj, "text", None)
+            if isinstance(text, str):
+                return text
+        except Exception:
+            pass
+
+        # Anthropic-like objects: response.content is a list of blocks with .text
+        try:
+            content = getattr(response_obj, "content", None)
+            if isinstance(content, str):
+                return content
+            if isinstance(content, list):
+                texts = []
+                for block in content:
+                    if isinstance(block, str):
+                        texts.append(block)
+                    else:
+                        block_text = getattr(block, "text", None)
+                        if isinstance(block_text, str):
+                            texts.append(block_text)
+                        elif isinstance(block, dict) and isinstance(block.get("text"), str):
+                            texts.append(block["text"])
+                if texts:
+                    return "".join(texts)
+        except Exception:
+            pass
+
+        # Last resort: stringify
+        return str(response_obj)
 
     def generate_responses_batch(
         self, test_cases: List[TestCase], **kwargs

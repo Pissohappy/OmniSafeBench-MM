@@ -10,7 +10,7 @@ from typing import Dict, Any, Tuple, Optional, List
 from PIL import Image
 from io import BytesIO
 from core.unified_registry import UNIFIED_REGISTRY
-from .base_defense import BaseDefense
+from core.base_classes import BaseDefense
 from core.data_formats import TestCase
 from .JailGuard_utils.utils import update_divergence, detect_attack
 from .JailGuard_utils.augmentations import (
@@ -116,11 +116,11 @@ class JailGuardDefense(BaseDefense):
             pass
         detection_result = detect_attack(max_div, jailbreak_keywords, threshold)
 
-        defended_case = self.create_defended_case(
+        if detection_result:
+            return self.block_input(test_case)
+        
+        return self.create_defended_case(
             test_case=test_case,
             defended_prompt=test_case.prompt,
             defended_image_path=test_case.image_path,
-            metadata={"should_return_default": detection_result == True},
         )
-
-        return defended_case

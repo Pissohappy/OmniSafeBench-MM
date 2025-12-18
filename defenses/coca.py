@@ -4,7 +4,7 @@ CoCA defense method - new architecture implementation
 
 from typing import Dict, Any
 
-from .base_defense import BaseDefense
+from core.base_classes import BaseDefense
 from core.data_formats import TestCase
 import torch
 
@@ -45,12 +45,4 @@ class CoCADefense(BaseDefense):
             alpha=alpha,
             max_new_tokens=1000,
         )
-
-        return TestCase(
-            test_case_id=test_case.test_case_id,
-            image_path=test_case.image_path,
-            prompt=test_case.prompt,
-            metadata={
-                "defense_generated_response": output,
-            },
-        )
+        return self.reply_directly(test_case, response_text=output)

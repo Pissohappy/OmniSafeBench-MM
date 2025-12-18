@@ -6,7 +6,7 @@ Implementation based on original HiddenDetect logic: uses specialized model to d
 import logging
 from typing import Dict, Any, Tuple, Optional
 
-from .base_defense import BaseDefense
+from core.base_classes import BaseDefense
 from core.data_formats import TestCase
 from .utils import score_and_generate_hiddendetect
 from llava.model.builder import load_pretrained_model
@@ -84,14 +84,19 @@ class HiddenDetectDefense(BaseDefense):
             threshold=self.HIDDENDETECT_THRESHOLD,
             max_new_tokens=1000,
         )
+        if output == "I'm sorry, I can't assist with that.":
+            return self.block_input(
+                test_case,
+                default_response=output,
+                defended_prompt=test_case.prompt,
+                defended_image_path=test_case.image_path,
+            )
 
-        defended_case = self.create_defended_case(
-            test_case=test_case,
+        # If not blocked, we can directly return the generated safe output
+        return self.reply_directly(
+            test_case,
+            response_text=output,
             defended_prompt=test_case.prompt,
             defended_image_path=test_case.image_path,
-            metadata={
-                "should_return_default": output
-                == "I'm sorry, I can't assist with that."
-            },
+            metadata={"hiddendetect_score": score},
         )
-        return defended_case

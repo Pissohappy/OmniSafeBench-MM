@@ -228,32 +228,84 @@ class TestUnifiedRegistry:
         assert UNIFIED_REGISTRY.validate_attack("non_existent_attack") is False
 
 
-class TestRegistryInit:
-    """Test registry initialization"""
+class TestPluginsYaml:
+    """Test config/plugins.yaml based registry initialization"""
 
-    def test_registry_init_import(self):
-        """Test registry_init import"""
-        from core.registry_init import initialize_registry_lazy_imports
+    def test_plugins_yaml_loaded(self):
+        from core.unified_registry import UNIFIED_REGISTRY
 
-        # Verify initialization function
-        mappings = initialize_registry_lazy_imports()
+        mappings = UNIFIED_REGISTRY._get_lazy_mappings()
         assert isinstance(mappings, dict)
         assert "attacks" in mappings
         assert "models" in mappings
         assert "defenses" in mappings
         assert "evaluators" in mappings
 
-        # Verify mapping dictionaries exist
         assert isinstance(mappings["attacks"], dict)
         assert isinstance(mappings["models"], dict)
         assert isinstance(mappings["defenses"], dict)
         assert isinstance(mappings["evaluators"], dict)
 
-        # Verify mappings are not empty
         assert len(mappings["attacks"]) > 0
         assert len(mappings["models"]) > 0
         assert len(mappings["defenses"]) > 0
         assert len(mappings["evaluators"]) > 0
+
+
+class TestResourcePolicy:
+    def test_infer_model_type_from_config(self):
+        from pipeline.resource_policy import infer_model_type_from_config
+
+        assert infer_model_type_from_config({}) == "api"
+        assert infer_model_type_from_config({"load_model": False}) == "api"
+        assert infer_model_type_from_config({"load_model": True}) == "local"
+
+    def test_policy_for_response_generation(self):
+        from pipeline.resource_policy import policy_for_response_generation
+
+        # default: no load_model flags -> parallel
+        p = policy_for_response_generation({}, {}, default_max_workers=7)
+        assert p.strategy == "parallel"
+        assert p.max_workers == 7
+        assert p.batched_impl == "none"
+
+        # model.load_model -> batched + single worker
+        p = policy_for_response_generation({"load_model": True}, {}, default_max_workers=7)
+        assert p.strategy == "batched"
+        assert p.max_workers == 1
+        assert p.batched_impl == "local_model"
+
+        # defense.load_model -> batched + single worker
+        p = policy_for_response_generation({}, {"load_model": True}, default_max_workers=7)
+        assert p.strategy == "batched"
+        assert p.max_workers == 1
+        assert p.batched_impl == "defense_only"
+
+    def test_policy_for_test_case_generation(self):
+        from pipeline.resource_policy import policy_for_test_case_generation
+
+        p = policy_for_test_case_generation({}, default_max_workers=9)
+        assert p.strategy == "parallel"
+        assert p.max_workers == 9
+        assert p.batched_impl == "none"
+
+        p = policy_for_test_case_generation({"load_model": True}, default_max_workers=9)
+        assert p.strategy == "batched"
+        assert p.max_workers == 1
+        assert p.batched_impl == "attack_local"
+
+    def test_policy_for_evaluation(self):
+        from pipeline.resource_policy import policy_for_evaluation
+
+        p = policy_for_evaluation({}, default_max_workers=5)
+        assert p.strategy == "parallel"
+        assert p.max_workers == 5
+        assert p.batched_impl == "none"
+
+        p = policy_for_evaluation({"load_model": True}, default_max_workers=5)
+        assert p.strategy == "batched"
+        assert p.max_workers == 1
+        assert p.batched_impl == "evaluator_local"
 
 
 if __name__ == "__main__":

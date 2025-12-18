@@ -12,6 +12,7 @@ from .base_pipeline import BasePipeline, process_with_strategy
 from core.data_formats import TestCase, PipelineConfig
 from core.unified_registry import UNIFIED_REGISTRY
 from utils.logging_utils import log_with_context
+from .resource_policy import policy_for_test_case_generation
 
 
 class TestCaseGenerator(BasePipeline):
@@ -139,8 +140,15 @@ class TestCaseGenerator(BasePipeline):
                 attack_name, attack_config, output_image_dir=str(image_save_dir)
             )
 
-            # Determine processing method based on load_model field in configuration
-            if attack_config.get("load_model", None):
+            # Unified resource policy (single source of truth)
+            policy = policy_for_test_case_generation(
+                attack_config, default_max_workers=self.config.max_workers
+            )
+            self.logger.info(
+                f"Resource policy for attack={attack_name}: strategy={policy.strategy}, max_workers={policy.max_workers} ({policy.reason})"
+            )
+
+            if policy.strategy == "batched":
                 # Attacks that need to load local models: batch processing, reuse the same attack instance, max_workers=1
                 self.logger.info(
                     f"Attack method {attack_name} needs to load local model, using batch processing (reusing attack instance)"
@@ -160,6 +168,7 @@ class TestCaseGenerator(BasePipeline):
                     batch_size,
                     output_file_path,
                     image_save_dir,
+                    max_workers_override=policy.max_workers,
                 )
 
         except Exception as e:
@@ -225,6 +234,7 @@ class TestCaseGenerator(BasePipeline):
         batch_size: int,
         output_file_path: Path,
         image_save_dir: Path,
+        max_workers_override: int | None = None,
     ) -> List[TestCase]:
         """Parallel generate test cases (for attacks that don't need to load local models)"""
 
@@ -254,7 +264,7 @@ class TestCaseGenerator(BasePipeline):
             pipeline=self,
             output_filename=output_file_path,
             batch_size=batch_size,
-            max_workers=None,  # Use default value from configuration
+            max_workers=max_workers_override,  # Use policy-decided value (or default)
             strategy_name="parallel",
             desc=f"Generate test cases ({attack_name})",
         )

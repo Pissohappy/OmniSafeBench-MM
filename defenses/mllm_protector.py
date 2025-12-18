@@ -9,7 +9,7 @@ import threading
 import time
 from typing import Dict, Any, Optional, Tuple
 
-from .base_defense import BaseDefense
+from core.base_classes import BaseDefense
 from core.data_formats import TestCase
 from .utils import generate_output
 from core.unified_registry import UNIFIED_REGISTRY
@@ -119,7 +119,7 @@ class MLLMProtectorDefense(BaseDefense):
                 defended_prompt=attack_prompt,
                 defended_image_path=attack_image_path,
                 metadata={
-                    "defense_generated_response": output,
+                    self.META_KEY_GENERATED_RESP: output,
                     "harm_score": harm_score,
                     "detoxified": harm_score < 0.5,
                 },
@@ -134,14 +134,13 @@ class MLLMProtectorDefense(BaseDefense):
 
     def _create_error_case(self, test_case: TestCase, error_msg: str) -> TestCase:
         """Create defense case for error situations"""
-        return self.create_defended_case(
-            test_case=test_case,
+        return self.block_input(
+            test_case,
+            default_response="I'm sorry, I can't assist with that.",
             defended_prompt=test_case.prompt,
             defended_image_path=test_case.image_path,
             metadata={
-                "should_return_default": True,
                 "defense_error": error_msg,
-                "default_response": "I'm sorry, I can't assist with that.",
                 "error_time": time.time(),
             },
         )

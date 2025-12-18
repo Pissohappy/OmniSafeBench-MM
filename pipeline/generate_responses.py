@@ -13,6 +13,9 @@ from core.unified_registry import UNIFIED_REGISTRY
 from utils.logging_utils import log_with_context
 
 
+from core.base_classes import BaseDefense
+from .resource_policy import policy_for_response_generation
+
 class ResponseGenerator(BasePipeline):
     """Model response generator"""
 
@@ -130,9 +133,9 @@ class ResponseGenerator(BasePipeline):
             )
 
             # Check if defense method has already generated response
-            if "defense_generated_response" in defended_test_case.metadata:
+            if BaseDefense.META_KEY_GENERATED_RESP in defended_test_case.metadata:
                 defense_response = defended_test_case.metadata[
-                    "defense_generated_response"
+                    BaseDefense.META_KEY_GENERATED_RESP
                 ]
                 self.logger.info(
                     f"Defense method has already generated response, using directly: {test_case.test_case_id}"
@@ -140,7 +143,7 @@ class ResponseGenerator(BasePipeline):
                 # Create metadata, including all relevant fields
                 metadata = {
                     **defended_test_case.metadata,
-                    "defense_generated_response_used": True,
+                    BaseDefense.META_KEY_GENERATED_RESP_USED: True,
                 }
 
                 response = ModelResponse(
@@ -155,9 +158,9 @@ class ResponseGenerator(BasePipeline):
                 return response
 
             # Check if should return default response (e.g., Llama-Guard-4 blocking case)
-            if defended_test_case.metadata.get("should_return_default", False):
+            if defended_test_case.metadata.get(BaseDefense.META_KEY_SHOULD_BLOCK, False):
                 default_response = defended_test_case.metadata.get(
-                    "default_response", "I'm sorry, I can't assist with that."
+                    BaseDefense.META_KEY_DEFAULT_RESP, "I'm sorry, I can't assist with that."
                 )
 
                 self.logger.info(
@@ -166,7 +169,7 @@ class ResponseGenerator(BasePipeline):
                 # Create metadata, including all relevant fields
                 metadata = {
                     **defended_test_case.metadata,
-                    "defense_blocked": True,
+                    BaseDefense.META_KEY_BLOCKED: True,
                 }
 
                 response = ModelResponse(
@@ -232,7 +235,11 @@ class ResponseGenerator(BasePipeline):
 
     @log_with_context("Batch generate model responses")
     def generate_responses_batch(
-        self, test_cases: List[TestCase], model_name: str, defense_name: str
+        self,
+        test_cases: List[TestCase],
+        model_name: str,
+        defense_name: str,
+        max_workers_override: int | None = None,
     ) -> List[ModelResponse]:
         """Batch generate responses for multiple test cases, suitable for locally loaded models or defenses that need to load models"""
         if not test_cases:
@@ -276,14 +283,14 @@ class ResponseGenerator(BasePipeline):
             remaining_test_cases = []
 
             for defended_test_case in defended_test_cases:
-                if "defense_generated_response" in defended_test_case.metadata:
+                if BaseDefense.META_KEY_GENERATED_RESP in defended_test_case.metadata:
                     # Defense method has already generated response
                     defense_response = defended_test_case.metadata[
-                        "defense_generated_response"
+                        BaseDefense.META_KEY_GENERATED_RESP
                     ]
                     metadata = {
                         **defended_test_case.metadata,
-                        "defense_generated_response_used": True,
+                        BaseDefense.META_KEY_GENERATED_RESP_USED: True,
                     }
                     response = ModelResponse(
                         test_case_id=defended_test_case.test_case_id,
@@ -292,14 +299,14 @@ class ResponseGenerator(BasePipeline):
                         metadata=metadata,
                     )
                     responses.append(response)
-                elif defended_test_case.metadata.get("should_return_default", False):
+                elif defended_test_case.metadata.get(BaseDefense.META_KEY_SHOULD_BLOCK, False):
                     # Defense method blocked input
                     default_response = defended_test_case.metadata.get(
-                        "default_response", "I'm sorry, I can't assist with that."
+                        BaseDefense.META_KEY_DEFAULT_RESP, "I'm sorry, I can't assist with that."
                     )
                     metadata = {
                         **defended_test_case.metadata,
-                        "defense_blocked": True,
+                        BaseDefense.META_KEY_BLOCKED: True,
                     }
                     response = ModelResponse(
                         test_case_id=defended_test_case.test_case_id,
@@ -332,7 +339,11 @@ class ResponseGenerator(BasePipeline):
                 # API models use parallel processing (utilizing multi-threading)
                 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-                max_workers = self.config.max_workers
+                max_workers = (
+                    max_workers_override
+                    if max_workers_override is not None
+                    else self.config.max_workers
+                )
                 self.logger.debug(
                     f"API models use parallel processing, worker threads: {max_workers}, test cases: {len(remaining_test_cases)}"
                 )
@@ -380,6 +391,101 @@ class ResponseGenerator(BasePipeline):
             self.logger.exception(f"Batch response generation failed: {e}")
             self._cleanup_defense_instance(defense_instance)
             raise e
+
+    def _generate_responses_local_model_batched(
+        self,
+        combo_tasks: List[Tuple[TestCase, str, str, str]],
+        model_name: str,
+        defense_name: str,
+        combo_filename: Path,
+        batch_size: int,
+    ) -> List[ModelResponse]:
+        """Unified resource strategy for local models:
+        - create the model once
+        - run single-worker
+        - process test cases in batches
+        - save incrementally via BatchSaveManager
+        """
+        from .base_pipeline import batch_save_context
+
+        # Create (and reuse) defense instance (single worker => safe)
+        defense_instance = None
+        defense_config = self.response_configs.get("defense_params", {}).get(
+            defense_name, {}
+        )
+        if defense_name != "None" and defense_name:
+            defense_config = dict(defense_config)
+            defense_config["output_dir"] = self.output_dir / defense_name
+            defense_config["target_model_name"] = model_name
+            defense_instance = UNIFIED_REGISTRY.create_defense(defense_name, defense_config)
+
+        # Create (and reuse) local model instance
+        model_config = self.response_configs.get("model_params", {}).get(model_name, {})
+        model = UNIFIED_REGISTRY.create_model(model_name, model_config)
+
+        all_responses: List[ModelResponse] = []
+        test_cases_only = [t[0] for t in combo_tasks]
+
+        with batch_save_context(
+            pipeline=self,
+            output_filename=combo_filename,
+            batch_size=batch_size,
+            total_items=len(test_cases_only),
+            desc=f"Generate responses (local model, {model_name}, {defense_name})",
+        ) as save_manager:
+            for i in range(0, len(test_cases_only), batch_size):
+                batch_cases = test_cases_only[i : i + batch_size]
+
+                defended_cases: List[TestCase] = []
+                for tc in batch_cases:
+                    if defense_instance is None:
+                        defended_cases.append(tc)
+                    else:
+                        defended_cases.append(defense_instance.apply_defense(tc))
+
+                # Handle defense-direct responses / blocked inputs
+                ready_responses: List[ModelResponse] = []
+                remaining_cases: List[TestCase] = []
+
+                for defended_tc in defended_cases:
+                    if BaseDefense.META_KEY_GENERATED_RESP in (defended_tc.metadata or {}):
+                        text = defended_tc.metadata[BaseDefense.META_KEY_GENERATED_RESP]
+                        meta = {**(defended_tc.metadata or {}), BaseDefense.META_KEY_GENERATED_RESP_USED: True}
+                        ready_responses.append(
+                            ModelResponse(
+                                test_case_id=defended_tc.test_case_id,
+                                model_response=text,
+                                model_name=model_name,
+                                metadata=meta,
+                            )
+                        )
+                    elif (defended_tc.metadata or {}).get(BaseDefense.META_KEY_SHOULD_BLOCK, False):
+                        default_resp = (defended_tc.metadata or {}).get(
+                            BaseDefense.META_KEY_DEFAULT_RESP, "I'm sorry, I can't assist with that."
+                        )
+                        meta = {**(defended_tc.metadata or {}), BaseDefense.META_KEY_BLOCKED: True}
+                        ready_responses.append(
+                            ModelResponse(
+                                test_case_id=defended_tc.test_case_id,
+                                model_response=default_resp,
+                                model_name=model_name,
+                                metadata=meta,
+                            )
+                        )
+                    else:
+                        remaining_cases.append(defended_tc)
+
+                # Local model batch inference (single worker)
+                if remaining_cases:
+                    inferred = model.generate_responses_batch(remaining_cases)
+                    ready_responses.extend(inferred)
+
+                all_responses.extend(ready_responses)
+                save_manager.add_results([r.to_dict() for r in ready_responses])
+
+        # Cleanup
+        self._cleanup_defense_instance(defense_instance)
+        return all_responses
 
     def run(self, **kwargs) -> List[ModelResponse]:
         """Run response generation, supports checkpoint resume and real-time batch saving"""
@@ -541,32 +647,44 @@ class ResponseGenerator(BasePipeline):
                 f"Processing combination: attack={attack_name}, model={model_name}, defense={defense_name}, tasks={len(combo_tasks)}"
             )
 
-            # Check load_model attribute in defense configuration
+            # Determine unified resource policy (local models => single worker + batched)
             defense_config = self.response_configs.get("defense_params", {}).get(
                 defense_name, {}
             )
+            model_config = self.response_configs.get("model_params", {}).get(model_name, {})
+            policy = policy_for_response_generation(
+                model_config, defense_config, default_max_workers=self.config.max_workers
+            )
 
-            # Determine processing method based on defense's load_model and model type
-            # If defense needs to load model, use batch processing; otherwise use parallel processing
-            if defense_config.get("load_model", False):
-                # Extract test cases
-                test_cases = [task[0] for task in combo_tasks]
-
-                # Batch generate responses
-                batch_responses = self.generate_responses_batch(
-                    test_cases, model_name, defense_name
+            # Single source of truth: follow policy only
+            if policy.strategy == "batched" and policy.batched_impl == "local_model":
+                local_responses = self._generate_responses_local_model_batched(
+                    combo_tasks=combo_tasks,
+                    model_name=model_name,
+                    defense_name=defense_name,
+                    combo_filename=combo_filename,
+                    batch_size=batch_size,
                 )
-
-                # Save results
-                response_dicts = [response.to_dict() for response in batch_responses]
-                self.save_results_incrementally(response_dicts, combo_filename)
-
+                all_responses.extend(local_responses)
+                self.logger.info(
+                    f"Combination completed (local policy): attack={attack_name}, model={model_name}, defense={defense_name}, generated {len(local_responses)} responses"
+                )
+            elif policy.strategy == "batched":
+                # Batched policy triggered by defense.load_model (or other future flags)
+                test_cases = [task[0] for task in combo_tasks]
+                batch_responses = self.generate_responses_batch(
+                    test_cases,
+                    model_name,
+                    defense_name,
+                    max_workers_override=policy.max_workers,
+                )
+                self.save_results_incrementally([r.to_dict() for r in batch_responses], combo_filename)
                 all_responses.extend(batch_responses)
                 self.logger.info(
-                    f"Combination completed: attack={attack_name}, model={model_name}, defense={defense_name}, generated {len(batch_responses)} responses"
+                    f"Combination completed (batched defense): attack={attack_name}, model={model_name}, defense={defense_name}, generated {len(batch_responses)} responses"
                 )
             else:
-                # Defense doesn't need to load model and model is API model: use multi-threaded parallel processing
+                # API model + stateless defense => use multi-threaded parallel processing
                 self.logger.info(
                     f"Defense {defense_name} doesn't need to load model and model {model_name} is API model, using multi-threaded parallel processing"
                 )
@@ -594,7 +712,7 @@ class ResponseGenerator(BasePipeline):
                     pipeline=self,
                     output_filename=combo_filename,
                     batch_size=batch_size,
-                    max_workers=self.config.max_workers,
+                    max_workers=policy.max_workers,
                     strategy_name="parallel",  # API models use parallel strategy
                     desc=f"Generate responses ({attack_name}, {model_name}, {defense_name})",
                 )

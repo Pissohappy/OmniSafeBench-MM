@@ -91,14 +91,11 @@ class UMKAttack(BaseAttack):
         save_path = images_dir / f"umk_{case_id}.jpg"
         save_image(adv_t_save, str(save_path))
 
-        return TestCase(
-            test_case_id=case_id,
-            image_path=save_path,
-            prompt=original_prompt + text_suffix,
-            metadata={
-                "attack_method": "umk",
-                "original_prompt": original_prompt,
-                "jailbreak_prompt": original_prompt + text_suffix,
-                "jailbreak_image_path": save_path,
-            },
+        jailbreak_prompt = original_prompt + text_suffix
+        return self.create_test_case(
+            case_id=case_id,
+            jailbreak_prompt=jailbreak_prompt,
+            jailbreak_image_path=str(save_path),
+            original_prompt=original_prompt,
+            original_image_path=str(image_path),
         )

@@ -9,6 +9,7 @@ from pathlib import Path
 from .base_pipeline import BasePipeline, process_with_strategy
 from core.data_formats import ModelResponse, EvaluationResult, PipelineConfig
 from core.unified_registry import UNIFIED_REGISTRY
+from .resource_policy import policy_for_evaluation
 
 
 class ResultEvaluator(BasePipeline):
@@ -60,12 +61,19 @@ class ResultEvaluator(BasePipeline):
                 for model_name in model_names:
                     for defense_name in defense_names:
                         defense_dir = responses_dir / defense_name
-                        response_file = (
+                        # Prefer JSONL outputs; fall back to legacy JSON list if present
+                        response_file_jsonl = (
+                            defense_dir
+                            / f"attack_{attack_name}_model_{model_name}.jsonl"
+                        )
+                        response_file_json = (
                             defense_dir
                             / f"attack_{attack_name}_model_{model_name}.json"
                         )
-                        if response_file.exists():
-                            files.append(response_file)
+                        if response_file_jsonl.exists():
+                            files.append(response_file_jsonl)
+                        elif response_file_json.exists():
+                            files.append(response_file_json)
             return files
 
         # Use unified data loading method
@@ -82,20 +90,48 @@ class ResultEvaluator(BasePipeline):
         return len(responses)
 
     def evaluate_single_response(
-        self, model_response: ModelResponse, evaluator_name: str
+        self,
+        model_response: ModelResponse,
+        evaluator_name: str,
+        evaluator=None,
     ) -> EvaluationResult:
         """Evaluate single model response"""
         try:
-            # Create evaluator instance
-            evaluator_config = self.evaluation_configs.get("evaluator_params", {}).get(
-                evaluator_name, {}
-            )
-            evaluator = UNIFIED_REGISTRY.create_evaluator(
-                evaluator_name, evaluator_config
-            )
+            # Create evaluator instance (unless provided for reuse)
+            if evaluator is None:
+                evaluator_config = self.evaluation_configs.get(
+                    "evaluator_params", {}
+                ).get(evaluator_name, {})
+                evaluator = UNIFIED_REGISTRY.create_evaluator(
+                    evaluator_name, evaluator_config
+                )
 
             # Execute evaluation
             evaluation_result = evaluator.evaluate_response(model_response)
+
+            # ---- Enrich result with contextual fields to make it self-contained ----
+            # NOTE: test_case_id is NOT globally unique across attacks/models/defenses.
+            # We must persist enough identifiers for correct grouping/analysis.
+            evaluation_result.attack_method = model_response.metadata.get("attack_method")
+            evaluation_result.original_prompt = model_response.metadata.get("original_prompt")
+            evaluation_result.jailbreak_prompt = model_response.metadata.get("jailbreak_prompt")
+
+            # Prefer jailbreak image if present; fall back to any image_path in metadata
+            evaluation_result.image_path = (
+                model_response.metadata.get("jailbreak_image_path")
+                or model_response.metadata.get("image_path")
+            )
+
+            evaluation_result.model_response = model_response.model_response
+            evaluation_result.model_name = model_response.model_name
+            evaluation_result.defense_method = model_response.metadata.get(
+                "defense_method", "None"
+            )
+
+            # Record evaluator name explicitly for downstream grouping
+            if evaluation_result.metadata is None:
+                evaluation_result.metadata = {}
+            evaluation_result.metadata["evaluator_name"] = evaluator_name
 
             self.logger.debug(
                 f"Successfully evaluated response {model_response.test_case_id}"
@@ -213,6 +249,7 @@ class ResultEvaluator(BasePipeline):
                 attack_name=attack_name,
                 model_name=model_name,
                 defense_name=defense_name,
+                evaluator_name=evaluator_name,
             )
 
             # Calculate expected evaluation result count for this combination
@@ -311,33 +348,68 @@ class ResultEvaluator(BasePipeline):
                 f"Processing combination: attack={attack_name}, model={model_name}, defense={defense_name}, evaluator={evaluator_name}, tasks={len(combo_tasks)}"
             )
 
-            # Prepare processing function
-            def process_task(task_item):
-                model_response, evaluator_name, task_id = task_item
-                try:
-                    evaluation = self.evaluate_single_response(
-                        model_response, evaluator_name
-                    )
-                    evaluation_dict = evaluation.to_dict()
-                    return evaluation_dict
-                except Exception as e:
-                    self.logger.error(
-                        f"Evaluation task failed ({model_response.test_case_id}, {evaluator_name}): {e}"
-                    )
-                    # Directly return None, don't save failed data
-                    return None
-
-            # Evaluators are usually API calls, use parallel strategy
-            results_dicts = process_with_strategy(
-                items=combo_tasks,
-                process_func=process_task,
-                pipeline=self,
-                output_filename=combo_filename,
-                batch_size=batch_size,
-                max_workers=self.config.max_workers,
-                strategy_name="parallel",  # Evaluators use parallel strategy
-                desc=f"Evaluate results ({attack_name}, {model_name}, {defense_name})",
+            evaluator_config = self.evaluation_configs.get("evaluator_params", {}).get(
+                evaluator_name, {}
             )
+            policy = policy_for_evaluation(
+                evaluator_config, default_max_workers=self.config.max_workers
+            )
+            self.logger.info(
+                f"Resource policy for evaluator={evaluator_name}: strategy={policy.strategy}, max_workers={policy.max_workers} ({policy.reason})"
+            )
+
+            if policy.strategy == "batched" and policy.batched_impl == "evaluator_local":
+                # Local evaluator: single worker + batched processing, reuse evaluator instance
+                from .base_pipeline import batch_save_context
+
+                evaluator_instance = UNIFIED_REGISTRY.create_evaluator(
+                    evaluator_name, evaluator_config
+                )
+                with batch_save_context(
+                    pipeline=self,
+                    output_filename=combo_filename,
+                    batch_size=batch_size,
+                    total_items=len(combo_tasks),
+                    desc=f"Evaluate results (local evaluator, {attack_name}, {model_name}, {defense_name}, {evaluator_name})",
+                ) as save_manager:
+                    for task_item in combo_tasks:
+                        model_response, evaluator_name, task_id = task_item
+                        try:
+                            evaluation = self.evaluate_single_response(
+                                model_response,
+                                evaluator_name,
+                                evaluator=evaluator_instance,
+                            )
+                            save_manager.add_result(evaluation.to_dict())
+                        except Exception as e:
+                            self.logger.error(
+                                f"Evaluation task failed ({model_response.test_case_id}, {evaluator_name}): {e}"
+                            )
+            else:
+                # Parallel evaluator (API): keep parallel strategy, but follow policy max_workers
+                def process_task(task_item):
+                    model_response, evaluator_name, task_id = task_item
+                    try:
+                        evaluation = self.evaluate_single_response(
+                            model_response, evaluator_name
+                        )
+                        return evaluation.to_dict()
+                    except Exception as e:
+                        self.logger.error(
+                            f"Evaluation task failed ({model_response.test_case_id}, {evaluator_name}): {e}"
+                        )
+                        return None
+
+                process_with_strategy(
+                    items=combo_tasks,
+                    process_func=process_task,
+                    pipeline=self,
+                    output_filename=combo_filename,
+                    batch_size=batch_size,
+                    max_workers=policy.max_workers,
+                    strategy_name="parallel",
+                    desc=f"Evaluate results ({attack_name}, {model_name}, {defense_name})",
+                )
 
             # Load results for this combination
             combo_results = self.load_results(combo_filename)
@@ -379,34 +451,39 @@ class ResultEvaluator(BasePipeline):
             attack_name = response.metadata.get("attack_method")
             model_name = response.model_name
             defense_name = response.metadata.get("defense_method", "None")
+            # We also need evaluator dimension; try to infer from existing evaluation files later.
 
             if attack_name:  # Ensure attack method name is not empty
                 combos.add((attack_name, model_name, defense_name))
 
+        # Since evaluator_name is now part of filename, we load by scanning evaluation directory
+        # for matching patterns instead of guessing evaluator names here.
+        evaluations_dir = Path(self.config.system["output_dir"]) / "evaluations"
+        if not evaluations_dir.exists():
+            self.logger.info("Evaluations directory does not exist, nothing to load")
+            return []
+
         for attack_name, model_name, defense_name in combos:
-            # Generate filename for this combination
-            _, combo_filename = self._generate_filename(
-                "evaluation",
-                attack_name=attack_name,
-                model_name=model_name,
-                defense_name=defense_name,
-            )
-
-            # Load evaluation results for this combination
-            combo_results = self.load_results(combo_filename)
-            for item in combo_results:
-                try:
-                    evaluation = EvaluationResult.from_dict(item)
-                    all_evaluations.append(evaluation)
-                except Exception as e:
-                    self.logger.warning(
-                        f"Failed to parse evaluation result ({attack_name}, {model_name}, {defense_name}): {e}"
+            # Match all evaluator-specific files for this combo
+            pattern_jsonl = f"attack_{attack_name}_model_{model_name}_defense_{defense_name}_evaluator_*.jsonl"
+            pattern_json = f"attack_{attack_name}_model_{model_name}_defense_{defense_name}_evaluator_*.json"
+            matched_files = list(evaluations_dir.glob(pattern_jsonl))
+            if not matched_files:
+                matched_files = list(evaluations_dir.glob(pattern_json))
+            for combo_filename in matched_files:
+                combo_results = self.load_results(combo_filename)
+                for item in combo_results:
+                    try:
+                        evaluation = EvaluationResult.from_dict(item)
+                        all_evaluations.append(evaluation)
+                    except Exception as e:
+                        self.logger.warning(
+                            f"Failed to parse evaluation result ({attack_name}, {model_name}, {defense_name}, file={combo_filename.name}): {e}"
+                        )
+                if combo_results:
+                    self.logger.debug(
+                        f"Loaded {len(combo_results)} evaluation results from {combo_filename}"
                     )
-
-            if combo_results:
-                self.logger.debug(
-                    f"Loaded {len(combo_results)} evaluation results from {combo_filename}"
-                )
 
         self.logger.info(f"Total loaded {len(all_evaluations)} evaluation results")
         return all_evaluations
@@ -415,46 +492,33 @@ class ResultEvaluator(BasePipeline):
         self, evaluations: List[EvaluationResult], responses: List[ModelResponse]
     ):
         """Generate evaluation report - calculate separately by evaluation file (attack method+model+defense method)"""
-        # Group by evaluation file (attack method+model+defense method)
-        eval_by_file = {}
+        # Group by evaluation "file key" (attack + model + defense + evaluator)
+        # IMPORTANT: test_case_id is not unique across attack methods; never use it as a global join key.
+        eval_by_file: Dict[str, Dict[str, Any]] = {}
 
-        # Create mapping from response ID to evaluation results
-        eval_map = {}
         for eval_ in evaluations:
-            key = eval_.test_case_id
-            if key not in eval_map:
-                eval_map[key] = []
-            eval_map[key].append(eval_)
+            attack_name = eval_.attack_method or eval_.metadata.get("attack_method", "unknown")
+            model_name = eval_.model_name or eval_.metadata.get("model_name", "unknown")
+            defense_name = eval_.defense_method or eval_.metadata.get("defense_method", "None")
+            evaluator_name = eval_.metadata.get("evaluator_name", "unknown")
 
-        # Group statistics by evaluation file
-        for response in responses:
-            # Get attack method name from metadata
-            attack_name = response.metadata.get("attack_method", "unknown")
-            model_name = response.model_name
-            defense_name = response.metadata.get("defense_method", "None")
-
-            # Build file identifier
-            file_key = f"{attack_name}_{model_name}_{defense_name}"
+            file_key = f"{attack_name}_{model_name}_{defense_name}_{evaluator_name}"
 
             if file_key not in eval_by_file:
                 eval_by_file[file_key] = {
                     "attack_method": attack_name,
                     "model_name": model_name,
                     "defense_method": defense_name,
+                    "evaluator_name": evaluator_name,
                     "total": 0,
                     "success": 0,
                     "scores": [],
-                    "evaluations": [],
                 }
 
-            # Find corresponding evaluation results
-            if response.test_case_id in eval_map:
-                for eval_ in eval_map[response.test_case_id]:
-                    eval_by_file[file_key]["total"] += 1
-                    if eval_.success:
-                        eval_by_file[file_key]["success"] += 1
-                    eval_by_file[file_key]["scores"].append(eval_.judge_score)
-                    eval_by_file[file_key]["evaluations"].append(eval_)
+            eval_by_file[file_key]["total"] += 1
+            if eval_.success:
+                eval_by_file[file_key]["success"] += 1
+            eval_by_file[file_key]["scores"].append(eval_.judge_score)
 
         # Calculate statistics for each file
         report = {
@@ -468,6 +532,7 @@ class ResultEvaluator(BasePipeline):
             "summary_by_attack": {},  # Summary by attack method
             "summary_by_model": {},  # Summary by model
             "summary_by_defense": {},  # Summary by defense method
+            "summary_by_evaluator": {},  # Summary by evaluator
         }
 
         total_success = 0
@@ -599,6 +664,31 @@ class ResultEvaluator(BasePipeline):
                     "average_score": round(avg_score, 2),
                 }
 
+        # Summary by evaluator
+        evaluator_stats = {}
+        for file_key, stats in eval_by_file.items():
+            evaluator_name = stats.get("evaluator_name", "unknown")
+            if evaluator_name not in evaluator_stats:
+                evaluator_stats[evaluator_name] = {"total": 0, "success": 0, "scores": []}
+            evaluator_stats[evaluator_name]["total"] += stats["total"]
+            evaluator_stats[evaluator_name]["success"] += stats["success"]
+            evaluator_stats[evaluator_name]["scores"].extend(stats["scores"])
+
+        for evaluator_name, stats in evaluator_stats.items():
+            if stats["total"] > 0:
+                success_rate = stats["success"] / stats["total"]
+                avg_score = (
+                    sum(stats["scores"]) / len(stats["scores"])
+                    if stats["scores"]
+                    else 0
+                )
+                report["summary_by_evaluator"][evaluator_name] = {
+                    "total": stats["total"],
+                    "success": stats["success"],
+                    "success_rate": round(success_rate, 4),
+                    "average_score": round(avg_score, 2),
+                }
+
         # Save report
         report_file = self.output_dir / "evaluation_report.json"
         with open(report_file, "w", encoding="utf-8") as f:
@@ -640,6 +730,14 @@ class ResultEvaluator(BasePipeline):
         for defense_name, stats in report["summary_by_defense"].items():
             self.logger.info(
                 f"{defense_name}: Success rate={stats['success_rate']:.2%} ({stats['success']}/{stats['total']}), "
+                f"Average score={stats['average_score']:.2f}"
+            )
+
+        # Display summary by evaluator
+        self.logger.info("\n=== Summary by Evaluator ===")
+        for evaluator_name, stats in report["summary_by_evaluator"].items():
+            self.logger.info(
+                f"{evaluator_name}: Success rate={stats['success_rate']:.2%} ({stats['success']}/{stats['total']}), "
                 f"Average score={stats['average_score']:.2f}"
             )
 

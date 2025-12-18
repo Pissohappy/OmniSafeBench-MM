@@ -12,7 +12,7 @@ from torchvision.utils import save_image
 from PIL import Image
 from tqdm import tqdm
 
-from core.unified_registry import BaseAttack
+from core.base_classes import BaseAttack
 from core.data_formats import TestCase
 from dataclasses import dataclass
 
@@ -273,14 +273,10 @@ class VisualAdvAttack(BaseAttack):
             self.save_path = self.output_image_dir / "advimg.jpg"
             save_image(adv_t_save, str(self.save_path))
 
-        return TestCase(
-            test_case_id=case_id,
-            image_path=self.save_path,
-            prompt=original_prompt,
-            metadata={
-                "attack_method": "visual_adv",
-                "original_prompt": original_prompt,
-                "jailbreak_prompt": original_prompt,
-                "jailbreak_image_path": self.save_path,
-            },
+        return self.create_test_case(
+            case_id=case_id,
+            jailbreak_prompt=original_prompt,
+            jailbreak_image_path=str(self.save_path),
+            original_prompt=original_prompt,
+            original_image_path=str(image_path),
         )

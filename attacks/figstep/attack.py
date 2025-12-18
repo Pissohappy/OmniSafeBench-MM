@@ -9,7 +9,7 @@ import textwrap
 from PIL import Image, ImageFont, ImageDraw
 
 from core.data_formats import TestCase
-from core.unified_registry import BaseAttack
+from core.base_classes import BaseAttack
 
 
 # ===================== Font and Drawing Tools =====================
@@ -127,15 +127,10 @@ class FigStepAttack(BaseAttack):
         img_path = self.output_image_dir / f"{case_id}.png"
         img.save(img_path)  ## Save image
 
-        test_case = TestCase(
-            test_case_id=str(case_id),
-            image_path=str(img_path),
-            prompt=self.cfg.attack_prompt,
-            metadata={
-                "attack_method": "figstep",
-                "original_prompt": original_prompt,
-                "jailbreak_prompt": self.cfg.attack_prompt,
-                "jailbreak_image_path": str(img_path),
-            },
+        return self.create_test_case(
+            case_id=case_id,
+            jailbreak_prompt=self.cfg.attack_prompt,
+            jailbreak_image_path=str(img_path),
+            original_prompt=original_prompt,
+            original_image_path=str(image_path),
         )
-        return test_case

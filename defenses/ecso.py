@@ -1,6 +1,6 @@
 import logging
 from typing import Dict, Any, Tuple, Optional
-from .base_defense import BaseDefense
+from core.base_classes import BaseDefense
 from core.data_formats import TestCase
 from core.unified_registry import UNIFIED_REGISTRY
 from .utils import generate_output
@@ -54,10 +54,4 @@ class ECSODefense(BaseDefense):
             output = generate_output(None, gen_qs, target_model)
         else:
             output = original_output
-        defended_case = self.create_defended_case(
-            test_case=test_case,
-            defended_prompt=test_case.prompt,
-            defended_image_path=test_case.image_path,
-            metadata={"defense_generated_response": output},
-        )
-        return defended_case
+        return self.reply_directly(test_case, response_text=output)

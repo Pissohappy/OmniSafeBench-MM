@@ -5,7 +5,7 @@ QGuard defense method, safety protection specifically designed for Qwen models
 
 from typing import Dict, Any, Tuple, Optional, List
 
-from .base_defense import BaseDefense
+from core.base_classes import BaseDefense
 from core.data_formats import TestCase
 
 from .qguard_utils.vision import load_images_batch
@@ -71,10 +71,15 @@ class QGuardDefense(BaseDefense):
         # print("judge_result:", judge_result["prediction"])
         is_harmful = judge_result["prediction"]
 
-        defended_case = self.create_defended_case(
+        if is_harmful.strip().lower() == "harmful":
+            return self.block_input(
+                test_case,
+                defended_prompt=test_case.metadata.get("jailbreak_prompt", test_case.prompt),
+                defended_image_path=test_case.image_path,
+            )
+
+        return self.create_defended_case(
             test_case=test_case,
-            defended_prompt=test_case.metadata["jailbreak_prompt"],
+            defended_prompt=test_case.metadata.get("jailbreak_prompt", test_case.prompt),
             defended_image_path=test_case.image_path,
-            metadata={"should_return_default": is_harmful.strip().lower() == "harmful"},
         )
-        return defended_case

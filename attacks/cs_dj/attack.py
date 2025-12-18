@@ -20,7 +20,8 @@ from sentence_transformers import SentenceTransformer, util
 
 
 from core.data_formats import TestCase
-from core.unified_registry import BaseAttack, UNIFIED_REGISTRY
+from core.base_classes import BaseAttack
+from core.unified_registry import UNIFIED_REGISTRY
 from config.config_loader import get_model_config
 
 
@@ -500,15 +501,10 @@ class CSDJAttack(BaseAttack):
         img_path = str(result_root / f"{key}.jpg")
         grid.save(img_path)
 
-        test_case = TestCase(
-            test_case_id=str(case_id),
-            image_path=str(img_path),
-            prompt=self.adv_prompt,
-            metadata={
-                "attack_method": "cs_dj",
-                "original_prompt": original_prompt,
-                "jailbreak_prompt": self.adv_prompt,
-                "jailbreak_image_path": str(img_path),
-            },
+        return self.create_test_case(
+            case_id=case_id,
+            jailbreak_prompt=self.adv_prompt,
+            jailbreak_image_path=str(img_path),
+            original_prompt=original_prompt,
+            original_image_path=str(image_path),
         )
-        return test_case

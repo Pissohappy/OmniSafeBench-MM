@@ -25,7 +25,8 @@ from .attack_utils import (
     get_gpt_response,
 )
 from core.data_formats import TestCase
-from core.unified_registry import BaseAttack, BaseModel, UNIFIED_REGISTRY
+from core.base_classes import BaseAttack, BaseModel
+from core.unified_registry import UNIFIED_REGISTRY
 from config.config_loader import get_model_config
 
 
@@ -1408,16 +1409,10 @@ class HIMRDAttack(BaseAttack):
             else []
         )
 
-        test_case = TestCase(
-            test_case_id=case_id,
-            image_path=images[0],
-            prompt=prompts_list[0],
-            metadata={
-                "attack_method": "himrd",
-                "original_prompt": original_prompt,
-                "jailbreak_prompt": prompts_list[0],
-                "jailbreak_image_path": images[0],
-            },
+        return self.create_test_case(
+            case_id=case_id,
+            jailbreak_prompt=prompts_list[0],
+            jailbreak_image_path=str(images[0]),
+            original_prompt=original_prompt,
+            original_image_path=str(image_path),
         )
-
-        return test_case

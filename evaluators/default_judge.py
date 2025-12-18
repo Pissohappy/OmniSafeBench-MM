@@ -5,7 +5,7 @@ Adapted to new architecture, using BaseEvaluator base class
 
 from typing import Dict, Any, List
 
-from .base_evaluator import BaseEvaluator
+from core.base_classes import BaseEvaluator
 from core.data_formats import ModelResponse, EvaluationResult
 
 # Import original judge_utils
@@ -22,12 +22,18 @@ class DefaultJudge(BaseEvaluator):
     """
 
     def __init__(self, config: Dict[str, Any] = None):
+        config = config or {}
         super().__init__(config)
 
         # Get parameters from configuration
         # Configuration should include model, max_tokens, temperature, max_workers, etc.
-        self.judge_model_name = config.get("model")
-        self.success_threshold = config.get("success_threshold", 3)
+        self.judge_model_name = self.config.get("model")
+        if not self.judge_model_name:
+            raise ValueError(
+                "DefaultJudge requires `evaluation.evaluator_params.default_judge.model` "
+                "to be set to a valid model name."
+            )
+        self.success_threshold = self.config.get("success_threshold", 3)
 
         # Use unified LLM initialization
         from core.unified_registry import UNIFIED_REGISTRY

@@ -7,7 +7,7 @@ import os
 import logging
 from typing import Dict, Any, Optional, Tuple, List
 
-from .base_defense import BaseDefense
+from core.base_classes import BaseDefense
 from core.data_formats import TestCase
 from core.unified_registry import UNIFIED_REGISTRY
 from .utils import generate_output
@@ -37,11 +37,15 @@ class LlamaGuard4Defense(BaseDefense):
             max_new_tokens=10,
         )
         # print("judge_response:", judge_response)
+        if "unsafe" in judge_response.lower():
+            return self.block_input(
+                test_case,
+                defended_prompt=attack_prompt,
+                defended_image_path=attack_image_path,
+            )
 
-        defended_case = self.create_defended_case(
+        return self.create_defended_case(
             test_case=test_case,
             defended_prompt=attack_prompt,
             defended_image_path=attack_image_path,
-            metadata={"should_return_default": "unsafe" in judge_response.lower()},
         )
-        return defended_case

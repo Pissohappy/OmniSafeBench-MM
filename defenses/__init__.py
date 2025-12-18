@@ -3,7 +3,7 @@ New architecture defense methods package
 Supports dynamic import, missing defense methods are set to None
 """
 
-from .base_defense import BaseDefense
+from core.base_classes import BaseDefense
 
 # Dynamically import all defense methods, set missing ones to None
 try:

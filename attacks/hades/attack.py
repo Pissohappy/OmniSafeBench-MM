@@ -11,7 +11,8 @@ import glob
 from PIL import Image, ImageFont, ImageDraw
 
 from core.data_formats import TestCase
-from core.unified_registry import BaseAttack, BaseModel, UNIFIED_REGISTRY
+from core.base_classes import BaseAttack, BaseModel
+from core.unified_registry import UNIFIED_REGISTRY
 from config.config_loader import get_model_config
 from .utils import (
     generate_caption,
@@ -182,17 +183,10 @@ class HadesAttack(BaseAttack):
         image_save_path = output_dir / image_filename
         new_image.save(image_save_path)
 
-        # Create test case
-        test_case = TestCase(
-            test_case_id=str(case_id),
-            image_path=str(image_save_path),
-            prompt=adv_prompt,
-            metadata={
-                "attack_method": "hades",
-                "original_prompt": original_prompt,
-                "jailbreak_prompt": adv_prompt,
-                "jailbreak_image_path": str(image_save_path),
-            },
+        return self.create_test_case(
+            case_id=case_id,
+            jailbreak_prompt=adv_prompt,
+            jailbreak_image_path=str(image_save_path),
+            original_prompt=original_prompt,
+            original_image_path=str(image_path),
         )
-
-        return test_case

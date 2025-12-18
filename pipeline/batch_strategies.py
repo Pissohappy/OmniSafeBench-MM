@@ -38,6 +38,28 @@ class BatchProcessingStrategy(ABC):
         return self.__class__.__name__
 
 
+class SequentialStrategy(BatchProcessingStrategy):
+    """Sequential processing strategy - processes items one by one in order."""
+
+    def process(
+        self,
+        items: List[Any],
+        process_func: Callable[[Any], Dict],
+        max_workers: Optional[int] = None,
+        **kwargs,
+    ) -> List[Dict]:
+        logger = kwargs.get("logger", logging.getLogger(__name__))
+        results: List[Dict] = []
+        for item in items:
+            try:
+                result = process_func(item)
+                if result is not None:
+                    results.append(result)
+            except Exception as e:
+                logger.error(f"Failed to process item {item}: {e}")
+        return results
+
+
 class ParallelStrategy(BatchProcessingStrategy):
     """Parallel processing strategy - uses thread pool for parallel processing, supports batch processing"""
 
@@ -102,40 +124,46 @@ class ParallelStrategy(BatchProcessingStrategy):
         max_workers: int,
         logger: logging.Logger,
     ) -> List[Dict]:
-        """Process a batch of items in parallel"""
-        results = []
+        """Process a batch of items in parallel (preserve input order)."""
+        results: List[Optional[Dict]] = [None] * len(items)
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all tasks
-            future_to_item = {
-                executor.submit(process_func, item): item for item in items
+            future_to_index = {
+                executor.submit(process_func, item): idx for idx, item in enumerate(items)
             }
 
             # Collect results
-            for future in as_completed(future_to_item):
-                item = future_to_item[future]
+            for future in as_completed(future_to_index):
+                idx = future_to_index[future]
                 try:
                     result = future.result()
                     if result is not None:
-                        results.append(result)
+                        results[idx] = result
                 except Exception as e:
-                    logger.error(f"Failed to process item {item}: {e}")
+                    logger.error(f"Failed to process item at index {idx}: {e}")
 
-        return results
+        return [r for r in results if r is not None]
 
 
 class BatchedStrategy(BatchProcessingStrategy):
     """Batched processing strategy - divides items into batches, each batch uses parallel processing"""
 
-    def __init__(self, batch_size: int = 10):
+    def __init__(
+        self,
+        batch_size: int = 10,
+        inner_strategy: Optional[BatchProcessingStrategy] = None,
+    ):
         """
         Initialize batched processing strategy
 
         Args:
             batch_size: Batch size
+            inner_strategy: Strategy used inside each batch. Defaults to ParallelStrategy().
         """
         if batch_size <= 0:
             raise ValueError("batch_size must be greater than 0")
         self.batch_size = batch_size
+        self.inner_strategy = inner_strategy or ParallelStrategy(batch_size=0)
 
     def process(
         self,
@@ -144,7 +172,7 @@ class BatchedStrategy(BatchProcessingStrategy):
         max_workers: Optional[int] = None,
         **kwargs,
     ) -> List[Dict]:
-        """Process items in batches, each batch uses parallel processing"""
+        """Process items in batches, each batch uses inner strategy (preserve overall order)."""
         logger = kwargs.get("logger", logging.getLogger(__name__))
         max_workers = max_workers or min(4, len(items))
 
@@ -163,9 +191,11 @@ class BatchedStrategy(BatchProcessingStrategy):
                 f"Processing batch {batch_num}/{total_batches}, contains {len(batch)} items"
             )
 
-            # Use parallel processing within each batch
-            batch_results = self._process_batch_parallel(
-                batch, process_func, max_workers, logger
+            batch_results = self.inner_strategy.process(
+                items=batch,
+                process_func=process_func,
+                max_workers=max_workers,
+                logger=logger,
             )
             results.extend(batch_results)
 
@@ -175,39 +205,13 @@ class BatchedStrategy(BatchProcessingStrategy):
 
         return results
 
-    def _process_batch_parallel(
-        self,
-        items: List[Any],
-        process_func: Callable[[Any], Dict],
-        max_workers: int,
-        logger: logging.Logger,
-    ) -> List[Dict]:
-        """Process a batch of items in parallel"""
-        results = []
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Submit all tasks
-            future_to_item = {
-                executor.submit(process_func, item): item for item in items
-            }
-
-            # Collect results
-            for future in as_completed(future_to_item):
-                item = future_to_item[future]
-                try:
-                    result = future.result()
-                    if result is not None:
-                        results.append(result)
-                except Exception as e:
-                    logger.error(f"Failed to process item {item}: {e}")
-
-        return results
-
 
 # Strategy factory
 class BatchStrategyFactory:
     """Batch processing strategy factory"""
 
     _strategies = {
+        "sequential": SequentialStrategy,
         "parallel": ParallelStrategy,
         "batched": BatchedStrategy,
     }
@@ -237,19 +241,26 @@ class BatchStrategyFactory:
 
         strategy_class = cls._strategies[strategy_name]
 
-        # All strategies require batch_size parameter
-        batch_size = kwargs.pop("batch_size", None)
-        if batch_size is None:
-            raise ValueError(
-                f"Strategy {strategy_name} requires batch_size parameter, but it was not provided"
-            )
+        if strategy_name == "sequential":
+            # No special args required
+            return strategy_class()
 
-        # For parallel strategy, batch_size <= 0 means process all items at once
-        # For batched strategy, batch_size must be > 0
-        if strategy_name == "batched" and batch_size <= 0:
-            raise ValueError("batched strategy's batch_size must be greater than 0")
+        if strategy_name == "parallel":
+            batch_size = kwargs.pop("batch_size", 0)
+            return strategy_class(batch_size=batch_size)
 
-        return strategy_class(batch_size=batch_size)
+        if strategy_name == "batched":
+            batch_size = kwargs.pop("batch_size", 10)
+            if batch_size <= 0:
+                raise ValueError("batched strategy's batch_size must be greater than 0")
+
+            inner = kwargs.pop("inner_strategy", None)
+            if isinstance(inner, str):
+                inner = cls.create_strategy(inner)
+            return strategy_class(batch_size=batch_size, inner_strategy=inner)
+
+        # Should not reach here due to earlier validation
+        return strategy_class(**kwargs)
 
     @classmethod
     def register_strategy(cls, name: str, strategy_class):

@@ -19,7 +19,8 @@ import io
 import base64
 
 from core.data_formats import TestCase
-from core.unified_registry import BaseAttack, UNIFIED_REGISTRY
+from core.base_classes import BaseAttack
+from core.unified_registry import UNIFIED_REGISTRY
 from config.config_loader import get_model_config
 
 from .judge import judger
@@ -277,13 +278,13 @@ class SIAttack(BaseAttack):
         if target_model is None or processor is None:
             self.logger.error("Target model loading failed, cannot generate test case")
             # Create error test case
-            return TestCase(
-                test_case_id=str(case_id),
-                image_path=image_path,
-                prompt=original_prompt,
+            return self.create_test_case(
+                case_id=case_id,
+                jailbreak_prompt=original_prompt,
+                jailbreak_image_path=str(image_path),
+                original_prompt=original_prompt,
+                original_image_path=str(image_path),
                 metadata={
-                    "attack_method": "si",
-                    "original_prompt": original_prompt,
                     "error": "Target model loading failed",
                     "target_model": self.cfg.target_model_name,
                 },
@@ -341,17 +342,11 @@ class SIAttack(BaseAttack):
         image_per.convert("RGB").save(save_img_path, format="PNG")
 
         # Create test case
-        test_case = TestCase(
-            test_case_id=str(case_id),
-            image_path=str(save_img_path),
-            prompt=final_question,
-            metadata={
-                "attack_method": "si",
-                "original_prompt": original_prompt,
-                "jailbreak_prompt": final_question,
-                "jailbreak_image_path": str(save_img_path),
-                "target_model": self.cfg.target_model_name,
-            },
+        return self.create_test_case(
+            case_id=case_id,
+            jailbreak_prompt=final_question,
+            jailbreak_image_path=str(save_img_path),
+            original_prompt=original_prompt,
+            original_image_path=str(image_path),
+            metadata={"target_model": self.cfg.target_model_name},
         )
-
-        return test_case

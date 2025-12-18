@@ -1,6 +1,6 @@
 from typing import Dict, Any, Tuple, Optional, List
 
-from .base_defense import BaseDefense
+from core.base_classes import BaseDefense
 from core.data_formats import TestCase
 
 from core.unified_registry import UNIFIED_REGISTRY
@@ -39,10 +39,15 @@ class LlavaGuardDefense(BaseDefense):
             max_new_tokens=500,
             top_p=0.95,
         )
-        defended_case = self.create_defended_case(
+        if "unsafe" in judge_response.lower():
+            return self.block_input(
+                test_case,
+                defended_prompt=test_case.metadata.get("jailbreak_prompt", test_case.prompt),
+                defended_image_path=test_case.image_path,
+            )
+
+        return self.create_defended_case(
             test_case=test_case,
-            defended_prompt=test_case.metadata["jailbreak_prompt"],
+            defended_prompt=test_case.metadata.get("jailbreak_prompt", test_case.prompt),
             defended_image_path=test_case.image_path,
-            metadata={"should_return_default": "unsafe" in judge_response.lower()},
         )
-        return defended_case

@@ -6,7 +6,7 @@ Migrated from original logic in generate_outputs.py
 import logging
 from typing import Dict, Any, Optional
 
-from .base_defense import BaseDefense
+from core.base_classes import BaseDefense
 from core.data_formats import TestCase
 from .utils import generate_output
 
@@ -71,17 +71,6 @@ class ShieldLMDefense(BaseDefense):
             )
 
         if "unsafe" in judge_result_2.lower():
-            defended_case = self.create_defended_case(
-                test_case=test_case,
-                defended_prompt=test_case.prompt,
-                defended_image_path=test_case.image_path,
-                metadata={"should_return_default": True},
-            )
+            return self.block_input(test_case)
         else:
-            defended_case = self.create_defended_case(
-                test_case=test_case,
-                defended_prompt=test_case.prompt,
-                defended_image_path=test_case.image_path,
-                metadata={"defense_generated_response": original_output},
-            )
-        return defended_case
+            return self.reply_directly(test_case, response_text=original_output)

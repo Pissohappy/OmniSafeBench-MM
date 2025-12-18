@@ -7,7 +7,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from pathlib import Path
 
 from core.data_formats import TestCase
-from core.unified_registry import BaseAttack
+from core.base_classes import BaseAttack
 
 from .utils.mixaug import (
     mixup_images,
@@ -142,15 +142,10 @@ class JOODAttack(BaseAttack):
         mixed_image_pil.save(img_path)  ## Save image
         adv_prompt = _parse_scenario2prompts(prompt, cfg.aug)
 
-        test_case = TestCase(
-            test_case_id=str(case_id),
-            image_path=str(img_path),
-            prompt=adv_prompt,
-            metadata={
-                "attack_method": "jood",
-                "original_prompt": original_prompt,
-                "jailbreak_prompt": adv_prompt,
-                "jailbreak_image_path": str(img_path),
-            },
+        return self.create_test_case(
+            case_id=case_id,
+            jailbreak_prompt=adv_prompt,
+            jailbreak_image_path=str(img_path),
+            original_prompt=original_prompt,
+            original_image_path=str(image_path),
         )
-        return test_case

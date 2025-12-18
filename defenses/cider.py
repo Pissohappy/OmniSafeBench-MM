@@ -6,7 +6,7 @@ CIDER (Content Integrity Defense with Enhanced Robustness) defense method
 from typing import Dict, Any, Tuple, Optional
 from pathlib import Path
 
-from .base_defense import BaseDefense
+from core.base_classes import BaseDefense
 from core.data_formats import TestCase
 import argparse
 from .cider_utils import defence, QApair
@@ -49,10 +49,15 @@ class CIDERDefense(BaseDefense):
             behav="CIDER_defense",
         )
 
-        defended_case = self.create_defended_case(
+        if pair.refuse == True:
+            return self.block_input(
+                test_case,
+                defended_prompt=test_case.prompt,
+                defended_image_path=test_case.image_path,
+            )
+
+        return self.create_defended_case(
             test_case=test_case,
             defended_prompt=test_case.prompt,
-            defended_image_path=(test_case.image_path),
-            metadata={"should_return_default": pair.refuse == True},
+            defended_image_path=test_case.image_path,
         )
-        return defended_case

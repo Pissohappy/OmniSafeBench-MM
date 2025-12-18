@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "OmniSafeBench-MM"
 version = "0.1.0"
@@ -19,8 +23,7 @@ dependencies = [
     "pandas>=2.3.3",
     "peft==0.17.1",
     "pillow>=12.0.0",
-    "pip>=25.3",
-    "protobuf>=6.33.2",
+    "protobuf>=6.33.2",  # 移除了 pip>=25.3，这不是项目依赖
     "pyyaml>=6.0.3",
     "scikit-image>=0.25.2",
     "scipy>=1.15.3",
@@ -39,9 +42,52 @@ dependencies = [
     "wandb>=0.23.1",
     "webdataset>=1.0.2",
 ]
+
+# 关键：包发现配置（解决 flat-layout 问题）
+[tool.setuptools]
+# 方式1：明确列出所有包（推荐）
+packages = [
+    "core",
+    "models", 
+    "config",
+    "assets",
+    "attacks",
+    "dataset",
+    "pipeline",
+    "defenses",
+    "evaluators",
+    "multimodalmodels",
+    "dataset_generate",
+]
+
+# 或方式2：使用 find 指令（如果上面的包名正确）
+# [tool.setuptools.packages.find]
+# where = ["."]
+# include = [
+#     "core*",
+#     "models*",
+#     "config*",
+#     "assets*",
+#     "output*",
+#     "attacks*",
+#     "dataset*",
+#     "pipeline*",
+#     "defenses*",
+#     "evaluators*",
+#     "multimodalmodels*",
+#     "dataset_generate*",
+# ]
+# exclude = [
+#     "tests*",
+#     "docs*",
+#     "examples*",
+#     "build*",
+#     "dist*",
+#     "*.egg-info*",
+# ]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-
 
 [[tool.uv.index]]
 name = "pytorch-cu118"

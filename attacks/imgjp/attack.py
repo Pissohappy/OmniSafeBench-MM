@@ -17,7 +17,7 @@ from .utils.torchattacks.attacks.pgdl2 import *
 import numpy as np
 
 from core.data_formats import TestCase
-from core.unified_registry import BaseAttack
+from core.base_classes import BaseAttack
 from dataclasses import dataclass
 
 
@@ -96,14 +96,10 @@ class ImgJPAttack(BaseAttack):
             self.adv_image_path = self.output_image_dir / f"imgjp_adv.jpg"
             self.adv_image.save(self.adv_image_path)
 
-        return TestCase(
-            test_case_id=case_id,
-            prompt=original_prompt,
-            image_path=self.adv_image_path,
-            metadata={
-                "attack_method": "imgjp",
-                "original_prompt": original_prompt,
-                "jailbreak_prompt": original_prompt,
-                "jailbreak_image_path": self.adv_image_path,
-            },
+        return self.create_test_case(
+            case_id=case_id,
+            jailbreak_prompt=original_prompt,
+            jailbreak_image_path=str(self.adv_image_path),
+            original_prompt=original_prompt,
+            original_image_path=str(image_path),
         )

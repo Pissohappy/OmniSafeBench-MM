@@ -16,7 +16,8 @@ import threading
 import logging
 
 from core.data_formats import TestCase
-from core.unified_registry import BaseAttack, UNIFIED_REGISTRY
+from core.base_classes import BaseAttack
+from core.unified_registry import UNIFIED_REGISTRY
 from config.config_loader import get_model_config
 
 from diffusers import StableDiffusion3Pipeline
@@ -475,18 +476,11 @@ class QRAttack(BaseAttack):
         img_path = self.output_image_dir / img_name
         canvas.save(img_path)
 
-        # Create test case
-        test_case = TestCase(
-            test_case_id=str(case_id),
-            image_path=str(img_path),
-            prompt=rephrased,
-            metadata={
-                "attack_method": "qr",
-                "original_prompt": original_prompt,
-                "key_phrase": key_phrase,
-                "jailbreak_prompt": rephrased,
-                "jailbreak_image_path": str(img_path),
-            },
+        return self.create_test_case(
+            case_id=case_id,
+            jailbreak_prompt=rephrased,
+            jailbreak_image_path=str(img_path),
+            original_prompt=original_prompt,
+            original_image_path=str(image_path),
+            metadata={"key_phrase": key_phrase},
         )
-
-        return test_case

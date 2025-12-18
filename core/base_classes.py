@@ -27,6 +27,10 @@ class BaseComponent(ABC):
         """
         self.config = config or {}
         self.name = self.__class__.__name__
+        # Registry name injected by UnifiedRegistry (canonical component id, e.g. "llama_guard_3")
+        self.registry_name = (
+            config.get("_registry_name") if isinstance(config, dict) else None
+        )
 
         # Initialize logger (using the module name where component is located)
         self.logger = logging.getLogger(self.__class__.__module__)
@@ -76,6 +80,13 @@ class BaseComponent(ABC):
 
 class BaseAttack(BaseComponent, ABC):
     """Attack method base class (enhanced version)"""
+
+    # Standard Metadata Keys
+    META_KEY_ATTACK_METHOD = "attack_method"
+    META_KEY_ORIGINAL_PROMPT = "original_prompt"
+    META_KEY_JAILBREAK_PROMPT = "jailbreak_prompt"
+    META_KEY_JAILBREAK_IMAGE = "jailbreak_image_path"
+    META_KEY_TARGET_MODEL = "target_model"
 
     def __init__(
         self, config: Dict[str, Any] = None, output_image_dir: Optional[str] = None
@@ -135,6 +146,61 @@ class BaseAttack(BaseComponent, ABC):
         """
         pass
 
+    def create_test_case(
+        self,
+        case_id: str,
+        jailbreak_prompt: str,
+        jailbreak_image_path: str,
+        original_prompt: str,
+        original_image_path: str = None,
+        metadata: Dict[str, Any] = None,
+        **kwargs,
+    ) -> TestCase:
+        """
+        Create a standardized `TestCase` with populated metadata.
+
+        Args:
+            case_id: Unique test case ID
+            jailbreak_prompt: The generated adversarial prompt
+            jailbreak_image_path: Path to the generated adversarial image
+            original_prompt: The original harmful prompt
+            original_image_path: Path to the original image (optional)
+            metadata: Additional metadata
+            **kwargs: Other parameters to store in metadata
+
+        Returns:
+            TestCase object
+        """
+        attack_method = (
+            getattr(self, "registry_name", None)
+            or getattr(self, "name", None)
+            or self.__class__.__name__.replace("Attack", "").lower()
+        )
+
+        base_metadata = {
+            self.META_KEY_ATTACK_METHOD: attack_method,
+            self.META_KEY_ORIGINAL_PROMPT: original_prompt,
+            self.META_KEY_JAILBREAK_PROMPT: jailbreak_prompt,
+            self.META_KEY_JAILBREAK_IMAGE: jailbreak_image_path,
+        }
+
+        if hasattr(self, "cfg") and hasattr(self.cfg, "target_model_name"):
+            if self.cfg.target_model_name:
+                base_metadata[self.META_KEY_TARGET_MODEL] = self.cfg.target_model_name
+
+        if original_image_path:
+            base_metadata["original_image_path"] = original_image_path
+
+        # Merge additional metadata
+        final_metadata = {**base_metadata, **(metadata or {}), **kwargs}
+
+        return TestCase(
+            test_case_id=str(case_id),
+            prompt=jailbreak_prompt,
+            image_path=jailbreak_image_path,
+            metadata=final_metadata,
+        )
+
     def __str__(self):
         return f"{self.name}(config={self.config})"
 
@@ -172,6 +238,13 @@ class BaseModel(BaseComponent, ABC):
 
 class BaseDefense(BaseComponent, ABC):
     """Defense method base class (enhanced version)"""
+
+    # Metadata keys
+    META_KEY_SHOULD_BLOCK = "should_return_default"
+    META_KEY_BLOCKED = "defense_blocked"
+    META_KEY_DEFAULT_RESP = "default_response"
+    META_KEY_GENERATED_RESP = "defense_generated_response"
+    META_KEY_GENERATED_RESP_USED = "defense_generated_response_used"
 
     def __init__(self, config: Dict[str, Any] = None):
         """
@@ -219,6 +292,90 @@ class BaseDefense(BaseComponent, ABC):
         """
         pass
 
+    def create_defended_case(
+        self,
+        test_case: TestCase,
+        defended_prompt: str = None,
+        defended_image_path: str = None,
+        metadata: Dict[str, Any] = None,
+    ) -> TestCase:
+        """
+        Create a new `TestCase` after applying defense (common helper).
+
+        This keeps downstream pipeline logic and metadata conventions consistent.
+        """
+        defense_method = (
+            getattr(self, "registry_name", None)
+            or getattr(self, "name", None)
+            or self.__class__.__name__.replace("Defense", "").lower()
+        )
+
+        return TestCase(
+            test_case_id=test_case.test_case_id,
+            prompt=defended_prompt,
+            image_path=defended_image_path,
+            metadata={
+                **(test_case.metadata or {}),
+                "defense_method": defense_method,
+                "defended_prompt": defended_prompt,
+                "defended_image_path": defended_image_path,
+                **(metadata or {}),
+            },
+        )
+
+    def block_input(
+        self,
+        test_case: TestCase,
+        default_response: str = "I'm sorry, I can't assist with that.",
+        defended_prompt: str = None,
+        defended_image_path: str = None,
+        metadata: Dict[str, Any] = None,
+    ) -> TestCase:
+        """
+        Mark the test case as 'blocked' by the defense.
+        Pipeline will intercept this and return `default_response` immediately.
+        """
+        defended_case = self.create_defended_case(
+            test_case=test_case,
+            defended_prompt=defended_prompt if defended_prompt is not None else test_case.prompt,
+            defended_image_path=defended_image_path
+            if defended_image_path is not None
+            else test_case.image_path,
+            metadata={
+                **(metadata or {}),
+                self.META_KEY_SHOULD_BLOCK: True,
+                self.META_KEY_BLOCKED: True,
+                self.META_KEY_DEFAULT_RESP: default_response,
+            },
+        )
+        return defended_case
+
+    def reply_directly(
+        self,
+        test_case: TestCase,
+        response_text: str,
+        defended_prompt: str = None,
+        defended_image_path: str = None,
+        metadata: Dict[str, Any] = None,
+    ) -> TestCase:
+        """
+        Defense generates the response directly (bypassing the target model).
+        Pipeline will use `response_text` as the final output.
+        """
+        defended_case = self.create_defended_case(
+            test_case=test_case,
+            defended_prompt=defended_prompt if defended_prompt is not None else test_case.prompt,
+            defended_image_path=defended_image_path
+            if defended_image_path is not None
+            else test_case.image_path,
+            metadata={
+                **(metadata or {}),
+                self.META_KEY_GENERATED_RESP: response_text,
+                self.META_KEY_GENERATED_RESP_USED: True,
+            },
+        )
+        return defended_case
+
     def __str__(self):
         return f"{self.name}(config={self.config})"
 
@@ -237,7 +394,9 @@ class BaseEvaluator(BaseComponent, ABC):
         super().__init__(config)
 
     @abstractmethod
-    def evaluate(self, model_response: ModelResponse, **kwargs) -> EvaluationResult:
+    def evaluate_response(
+        self, model_response: ModelResponse, **kwargs
+    ) -> EvaluationResult:
         """
         Evaluate model response
 

@@ -3,7 +3,7 @@ import torch
 from typing import Dict, Any, Tuple, Optional
 from PIL import Image
 
-from .base_defense import BaseDefense
+from core.base_classes import BaseDefense
 from core.data_formats import TestCase
 
 import torch
@@ -97,10 +97,4 @@ class VLGuardDefense(BaseDefense):
 
         # Decode output
         outputs = self.tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0]
-        defended_case = self.create_defended_case(
-            test_case=test_case,
-            defended_prompt=test_case.prompt,
-            defended_image_path=test_case.image_path,
-            metadata={"defense_generated_response": outputs},
-        )
-        return defended_case
+        return self.reply_directly(test_case, response_text=outputs)

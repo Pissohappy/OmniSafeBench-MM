@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import torch
 from transformers import AutoProcessor
 from transformers import Qwen2_5_VLForConditionalGeneration
-from core.unified_registry import BaseAttack
+from core.base_classes import BaseAttack
 from core.data_formats import TestCase
 from dataclasses import dataclass
 
@@ -435,14 +435,10 @@ class VisCRAAttack(BaseAttack):
         # Modify query
         modified_query = self._modify_query(query, self.attack_type)
 
-        return TestCase(
-            test_case_id=case_id,
-            image_path=attack_image,
-            prompt=modified_query,
-            metadata={
-                "attack_method": "viscra",
-                "original_prompt": query,
-                "jailbreak_prompt": modified_query,
-                "jailbreak_image_path": attack_image,
-            },
+        return self.create_test_case(
+            case_id=case_id,
+            jailbreak_prompt=modified_query,
+            jailbreak_image_path=str(attack_image),
+            original_prompt=query,
+            original_image_path=str(image_path),
         )

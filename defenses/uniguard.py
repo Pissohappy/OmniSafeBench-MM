@@ -13,7 +13,7 @@ from typing import Dict, Any, Optional, Tuple
 from PIL import Image
 import numpy as np
 
-from .base_defense import BaseDefense
+from core.base_classes import BaseDefense
 from core.data_formats import TestCase
 from .utils import add_patch_to_image_universal
 

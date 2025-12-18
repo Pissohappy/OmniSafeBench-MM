@@ -1,4 +1,4 @@
-from .base_evaluator import BaseEvaluator
+from core.base_classes import BaseEvaluator
 from .default_judge import DefaultJudge
 
 __all__ = [

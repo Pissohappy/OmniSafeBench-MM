@@ -3,7 +3,7 @@ import re
 from typing import Dict, Any, Tuple, Optional
 
 import re
-from .base_defense import BaseDefense
+from core.base_classes import BaseDefense
 from core.data_formats import TestCase
 
 from core.unified_registry import UNIFIED_REGISTRY
@@ -74,10 +74,15 @@ None
             print(f"Error during extraction: {e}")
             request_value = "unharmful"
 
-        defended_case = self.create_defended_case(
+        if request_value == "harmful":
+            return self.block_input(
+                test_case,
+                defended_prompt=test_case.metadata.get("jailbreak_prompt", test_case.prompt),
+                defended_image_path=test_case.image_path,
+            )
+
+        return self.create_defended_case(
             test_case=test_case,
-            defended_prompt=test_case.metadata["jailbreak_prompt"],
+            defended_prompt=test_case.metadata.get("jailbreak_prompt", test_case.prompt),
             defended_image_path=test_case.image_path,
-            metadata={"should_return_default": request_value == "harmful"},
         )
-        return defended_case

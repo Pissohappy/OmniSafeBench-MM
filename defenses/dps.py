@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from .base_defense import BaseDefense
+from core.base_classes import BaseDefense
 from core.data_formats import TestCase
 from core.unified_registry import UNIFIED_REGISTRY
 from .dps_utils import (
