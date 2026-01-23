@@ -5,6 +5,8 @@ Test pipeline system
 import pytest
 import tempfile
 import json
+import threading
+import time
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
@@ -133,22 +135,26 @@ class TestBasePipeline:
         pipeline_config = PipelineConfig(**test_config)
         pipeline = create_concrete_pipeline(pipeline_config, "test_case_generation")
 
+        # Create a temporary file just to get a unique name
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            temp_file = Path(f.name)
+            temp_file_name = Path(f.name).name
+
+        # The actual file will be created in pipeline's output_dir
+        output_file = pipeline.output_dir / temp_file_name
 
         try:
             first = {"test_case_id": "case_1", "data": 1}
             second = {"test_case_id": "case_1", "data": 2}
 
-            pipeline.save_single_result(first, temp_file.name)
-            pipeline.save_single_result(second, temp_file.name)
+            pipeline.save_single_result(first, temp_file_name)
+            pipeline.save_single_result(second, temp_file_name)
 
-            loaded = pipeline.load_results(temp_file)
+            loaded = pipeline.load_results(output_file)
             assert len(loaded) == 1
             assert loaded[0]["data"] == 2
         finally:
-            if temp_file.exists():
-                temp_file.unlink()
+            if output_file.exists():
+                output_file.unlink()
 
     def test_task_hash(self, test_config):
         """Test task hash generation"""
@@ -232,6 +238,9 @@ class TestBatchSaveManager:
                 # Verify buffer has been cleared
                 assert len(manager.buffer) == 0
                 assert manager.total_saved == 2
+        finally:
+            if temp_file.exists():
+                temp_file.unlink()
 
     def test_batch_save_flush(self, test_config):
         """Test flush saves remaining buffer"""
@@ -257,10 +266,6 @@ class TestBatchSaveManager:
                 manager.flush()
                 mock_save.assert_called_once()
                 assert manager.buffer == []
-        finally:
-            if temp_file.exists():
-                temp_file.unlink()
-
         finally:
             if temp_file.exists():
                 temp_file.unlink()
@@ -293,6 +298,110 @@ class TestBatchSaveManager:
 
                 # Should save remaining results when exiting context manager
                 mock_save.assert_called()
+
+        finally:
+            if temp_file.exists():
+                temp_file.unlink()
+
+    def test_batch_save_no_deadlock_when_exceeding_batch_size(self, test_config):
+        """Test that adding results equal to batch_size doesn't cause deadlock.
+
+        This test verifies the fix for the deadlock bug where:
+        - add_result() acquires self.lock
+        - When buffer >= batch_size, _flush_buffer() is called
+        - _flush_buffer() tries to acquire self.lock again → DEADLOCK
+
+        The fix uses _flush_unlocked() which assumes caller holds the lock.
+        """
+        from pipeline.base_pipeline import BatchSaveManager
+        from core.data_formats import PipelineConfig
+        import tempfile
+
+        pipeline_config = PipelineConfig(**test_config)
+        pipeline = create_concrete_pipeline(pipeline_config, "test_case_generation")
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            temp_file = Path(f.name)
+
+        try:
+            manager = BatchSaveManager(
+                pipeline=pipeline, output_filename=temp_file, batch_size=3
+            )
+
+            # Add exactly batch_size results - this would trigger the deadlock in the bug
+            results = [{"id": i, "data": f"result_{i}"} for i in range(3)]
+
+            # Use a timeout to catch potential deadlocks
+            def add_results_with_timeout():
+                for result in results:
+                    manager.add_result(result)
+
+            thread = threading.Thread(target=add_results_with_timeout)
+            thread.start()
+
+            # Wait up to 5 seconds - if deadlock occurs, this will timeout
+            thread.join(timeout=5.0)
+
+            assert not thread.is_alive(), "Thread is still alive - likely deadlock!"
+            assert manager.total_saved == 3, f"Expected 3 saved, got {manager.total_saved}"
+            assert len(manager.buffer) == 0, "Buffer should be empty after batch save"
+
+        finally:
+            if temp_file.exists():
+                temp_file.unlink()
+
+    def test_batch_save_concurrent_additions(self, test_config):
+        """Test thread-safe batch saving with concurrent additions"""
+        from pipeline.base_pipeline import BatchSaveManager
+        from core.data_formats import PipelineConfig
+        import tempfile
+
+        pipeline_config = PipelineConfig(**test_config)
+        pipeline = create_concrete_pipeline(pipeline_config, "test_case_generation")
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            temp_file = Path(f.name)
+
+        try:
+            manager = BatchSaveManager(
+                pipeline=pipeline, output_filename=temp_file, batch_size=10
+            )
+
+            num_threads = 4
+            results_per_thread = 25
+            exceptions = []
+
+            def add_results(thread_id):
+                try:
+                    for i in range(results_per_thread):
+                        manager.add_result(
+                            {"thread_id": thread_id, "index": i, "data": f"t{thread_id}_r{i}"}
+                        )
+                        # Small random delay to increase contention
+                        time.sleep(0.001)
+                except Exception as e:
+                    exceptions.append((thread_id, e))
+
+            threads = []
+            for i in range(num_threads):
+                t = threading.Thread(target=add_results, args=(i,))
+                threads.append(t)
+                t.start()
+
+            # Wait for all threads with timeout
+            for t in threads:
+                t.join(timeout=30.0)
+
+            # Check no thread is stuck (deadlock)
+            assert not any(t.is_alive() for t in threads), "Some threads are still alive - likely deadlock!"
+
+            # Check no exceptions occurred
+            assert len(exceptions) == 0, f"Exceptions occurred: {exceptions}"
+
+            # Verify all results were saved
+            expected_total = num_threads * results_per_thread
+            assert manager.total_saved >= expected_total - manager.batch_size, \
+                f"Expected at least {expected_total - manager.batch_size} saved, got {manager.total_saved}"
 
         finally:
             if temp_file.exists():

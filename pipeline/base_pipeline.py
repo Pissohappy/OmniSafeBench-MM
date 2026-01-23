@@ -465,8 +465,19 @@ class BasePipeline(ABC):
         return str(filepath)
 
     def save_single_result(self, result: Dict, filename: str) -> str:
-        """Save single result to file (append mode)"""
-        filepath = self.output_dir / filename
+        """Save single result to file (append mode)
+
+        Args:
+            result: The result to save
+            filename: File path (can be absolute or relative to output_dir)
+
+        Returns:
+            str: Path to the saved file
+        """
+        # Handle both absolute and relative paths
+        filepath = Path(filename)
+        if not filepath.is_absolute():
+            filepath = self.output_dir / filename
 
         # Atomic write: write to temporary file first
         temp_file = filepath.with_suffix(".tmp")
@@ -590,7 +601,7 @@ class BatchSaveManager:
 
             # Check if save is needed
             if len(self.buffer) >= self.batch_size:
-                self._flush_buffer()
+                self._flush_unlocked()
 
     def add_results(self, results: List[Dict]) -> None:
         """Batch add results"""
@@ -604,14 +615,21 @@ class BatchSaveManager:
                 self._save_batch(batch)
 
     def _flush_buffer(self) -> None:
-        """Save all results in buffer"""
+        """Save all results in buffer (thread-safe public method)"""
+        with self.lock:
+            self._flush_unlocked()
+
+    def _flush_unlocked(self) -> None:
+        """Internal flush method, caller must hold lock.
+
+        This is the actual implementation that flushes the buffer.
+        It must only be called while holding self.lock.
+        """
         if not self.buffer:
             return
-
-        with self.lock:
-            batch = self.buffer.copy()
-            self.buffer.clear()
-            self._save_batch(batch)
+        batch = self.buffer.copy()
+        self.buffer.clear()
+        self._save_batch(batch)
 
     def _save_batch(self, batch: List[Dict]) -> None:
         """Save a batch of results"""

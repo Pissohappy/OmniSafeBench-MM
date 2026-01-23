@@ -21,20 +21,17 @@ class TestBaseClasses:
                     test_case_id="test", prompt="test", image_path="test", metadata={}
                 )
 
-        # Test case requiring local model loading
-        attack_with_model = TestAttack(config={"model_path": "/path/to/model"})
+        # Test with explicit load_model=True
+        attack_with_model = TestAttack(config={"load_model": True})
         assert attack_with_model.load_model is True
 
-        # Test case not requiring local model loading
-        attack_without_model = TestAttack(config={})
+        # Test with explicit load_model=False
+        attack_without_model = TestAttack(config={"load_model": False})
         assert attack_without_model.load_model is False
 
-        # Test other local model configuration items
-        attack_with_device = TestAttack(config={"device": "cuda:0"})
-        assert attack_with_device.load_model is True
-
-        attack_with_checkpoint = TestAttack(config={"checkpoint": "model.ckpt"})
-        assert attack_with_checkpoint.load_model is True
+        # Test without load_model field (defaults to False)
+        attack_default = TestAttack(config={})
+        assert attack_default.load_model is False
 
     def test_base_component_required_field_validation(self):
         """Test required field validation (error when missing, normal when provided)"""
@@ -73,13 +70,17 @@ class TestBaseClasses:
             def apply_defense(self, test_case, **kwargs):
                 return test_case
 
-        # Test case requiring local model loading
-        defense_with_model = TestDefense(config={"local_model": True})
+        # Test with explicit load_model=True
+        defense_with_model = TestDefense(config={"load_model": True})
         assert defense_with_model.load_model is True
 
-        # Test case not requiring local model loading
-        defense_without_model = TestDefense(config={})
+        # Test with explicit load_model=False
+        defense_without_model = TestDefense(config={"load_model": False})
         assert defense_without_model.load_model is False
+
+        # Test without load_model field (defaults to False)
+        defense_default = TestDefense(config={})
+        assert defense_default.load_model is False
 
     def test_base_model_model_type_detection(self):
         """Test model type detection"""

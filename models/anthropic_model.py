@@ -7,6 +7,11 @@ class AnthropicModel(BaseModel):
 
     default_output = "I'm sorry, but I cannot assist with that request."
 
+    # Anthropic-specific content policy keywords
+    PROVIDER_SPECIFIC_KEYWORDS = [
+        "output blocked by content filtering policy",
+    ]
+
     def __init__(self, model_name: str, api_key: str) -> None:
         super().__init__(model_name, api_key)
 
@@ -53,15 +58,8 @@ class AnthropicModel(BaseModel):
                 )
                 return response
             except Exception as e:
-                error_str = str(e).lower()
-                if "Output blocked by content filtering policy" in str(e):
-                    return self.API_CONTENT_REJECTION_OUTPUT
-                # Handle BadRequestError specifically
-                if (
-                    "badrequesterror" in error_str
-                    and "data_inspection_failed" in error_str
-                ):
-                    return self.API_CONTENT_REJECTION_OUTPUT
+                if self._is_content_policy_rejection(e):
+                    return self._handle_content_rejection()
                 raise
 
         return self._retry_with_backoff(_api_call)
@@ -100,23 +98,8 @@ class AnthropicModel(BaseModel):
                 )
                 return stream
             except Exception as e:
-                error_str = str(e).lower()
-                if "Output blocked by content filtering policy" in str(e):
-                    # Return a generator that yields the content rejection placeholder
-                    def error_generator():
-                        yield self.API_CONTENT_REJECTION_OUTPUT
-
-                    return error_generator()
-                # Handle BadRequestError specifically
-                if (
-                    "badrequesterror" in error_str
-                    and "data_inspection_failed" in error_str
-                ):
-
-                    def error_generator():
-                        yield self.API_CONTENT_REJECTION_OUTPUT
-
-                    return error_generator()
+                if self._is_content_policy_rejection(e):
+                    return self._handle_content_rejection_stream()
                 raise
 
         try:
@@ -128,4 +111,4 @@ class AnthropicModel(BaseModel):
                 elif hasattr(chunk, "completion") and chunk.completion:
                     yield chunk.completion
         except Exception:
-            yield self.API_ERROR_OUTPUT
+            yield self._handle_api_error()

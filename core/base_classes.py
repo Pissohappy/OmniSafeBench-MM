@@ -47,7 +47,11 @@ class BaseComponent(ABC):
             cfg_dict = config
             allowed_fields = {f.name for f in fields(self.CONFIG_CLASS)}
             filtered = {k: v for k, v in cfg_dict.items() if k in allowed_fields}
-            self.cfg = self.CONFIG_CLASS(**filtered)
+            try:
+                self.cfg = self.CONFIG_CLASS(**filtered)
+            except TypeError as e:
+                # Convert TypeError to ValueError for consistency
+                raise ValueError(f"Invalid configuration: {e}") from e
         else:
             # No configuration class or not a dataclass, use dictionary directly
             self.cfg = config
@@ -76,6 +80,24 @@ class BaseComponent(ABC):
             # For dictionary configuration, can add dictionary-specific validation
             pass
         # Subclasses can add more validation logic
+
+    def _determine_load_model(self) -> bool:
+        """Determine if local model needs to be loaded.
+
+        Checks the load_model field in configuration (dict or dataclass).
+        Returns False if load_model is not explicitly set.
+        """
+        if hasattr(self, "cfg"):
+            config_obj = self.cfg
+        else:
+            config_obj = self.config
+
+        if isinstance(config_obj, dict):
+            return config_obj.get("load_model", False)
+        elif hasattr(config_obj, "load_model"):
+            return getattr(config_obj, "load_model", False)
+
+        return False
 
 
 class BaseAttack(BaseComponent, ABC):
@@ -108,25 +130,6 @@ class BaseAttack(BaseComponent, ABC):
 
         # Determine if local model needs to be loaded
         self.load_model = self._determine_load_model()
-
-    def _determine_load_model(self) -> bool:
-        """Determine if local model needs to be loaded
-
-        Only decide based on the load_model field in configuration
-        """
-        # Check if load_model field exists in configuration
-        if hasattr(self, "cfg"):
-            config_obj = self.cfg
-        else:
-            config_obj = self.config
-
-        # Only check load_model configuration item
-        if isinstance(config_obj, dict):
-            return config_obj.get("load_model", False)
-        elif hasattr(config_obj, "load_model"):
-            return getattr(config_obj, "load_model", False)
-
-        return False
 
     @abstractmethod
     def generate_test_case(
@@ -258,25 +261,6 @@ class BaseDefense(BaseComponent, ABC):
 
         # Determine if local model needs to be loaded
         self.load_model = self._determine_load_model()
-
-    def _determine_load_model(self) -> bool:
-        """Determine if local model needs to be loaded
-
-        Only based on the load_model field in configuration
-        """
-        # Check if load_model field exists in configuration
-        if hasattr(self, "cfg"):
-            config_obj = self.cfg
-        else:
-            config_obj = self.config
-
-        # Only check load_model configuration item
-        if isinstance(config_obj, dict):
-            return config_obj.get("load_model", False)
-        elif hasattr(config_obj, "load_model"):
-            return getattr(config_obj, "load_model", False)
-
-        return False
 
     @abstractmethod
     def apply_defense(self, test_case: TestCase, **kwargs) -> TestCase:

@@ -7,6 +7,11 @@ class GoogleModel(BaseModel):
 
     default_output = "I'm sorry, but I cannot assist with that request."
 
+    # Google-specific content policy keywords
+    PROVIDER_SPECIFIC_KEYWORDS = [
+        "blocked",
+    ]
+
     def __init__(self, model_name: str, api_key: str, base_url: str = None) -> None:
         super().__init__(model_name=model_name, api_key=api_key, base_url=base_url)
 
@@ -37,27 +42,8 @@ class GoogleModel(BaseModel):
                 )
                 return response
             except Exception as e:
-                # Check for content policy violations in Gemini models
-                error_str = str(e).lower()
-                content_keywords = [
-                    "content policy",
-                    "safety",
-                    "harmful",
-                    "unsafe",
-                    "violation",
-                    "moderation",
-                    "blocked",
-                    "data_inspection_failed",
-                    "inappropriate content",
-                ]
-                if any(keyword in error_str for keyword in content_keywords):
-                    return self.API_CONTENT_REJECTION_OUTPUT
-                # Handle BadRequestError specifically
-                if (
-                    "badrequesterror" in error_str
-                    and "data_inspection_failed" in error_str
-                ):
-                    return self.API_CONTENT_REJECTION_OUTPUT
+                if self._is_content_policy_rejection(e):
+                    return self._handle_content_rejection()
                 raise
 
         return self._retry_with_backoff(_api_call)
@@ -86,4 +72,4 @@ class GoogleModel(BaseModel):
                 if chunk.text:
                     yield chunk.text
         except Exception:
-            yield self.API_ERROR_OUTPUT
+            yield self._handle_api_error()

@@ -33,20 +33,8 @@ class DoubaoModel(BaseModel):
                 )
                 return response
             except Exception as e:
-                # Check for content policy violations in ByteDance models
-                error_str = str(e).lower()
-                content_keywords = [
-                    "content policy",
-                    "safety",
-                    "harmful",
-                    "unsafe",
-                    "violation",
-                    "moderation",
-                    "data_inspection_failed",
-                    "inappropriate content",
-                ]
-                if any(keyword in error_str for keyword in content_keywords):
-                    return self.API_CONTENT_REJECTION_OUTPUT
+                if self._is_content_policy_rejection(e):
+                    return self._handle_content_rejection()
                 raise
 
         return self._retry_with_backoff(_api_call)
@@ -68,34 +56,8 @@ class DoubaoModel(BaseModel):
                 )
                 return stream
             except Exception as e:
-                # Check for content policy violations in ByteDance models
-                error_str = str(e).lower()
-                content_keywords = [
-                    "content policy",
-                    "safety",
-                    "harmful",
-                    "unsafe",
-                    "violation",
-                    "moderation",
-                    "data_inspection_failed",
-                    "inappropriate content",
-                ]
-                if any(keyword in error_str for keyword in content_keywords):
-                    # Return a generator that yields the content rejection placeholder
-                    def error_generator():
-                        yield self.API_CONTENT_REJECTION_OUTPUT
-
-                    return error_generator()
-                # Handle BadRequestError specifically
-                if (
-                    "badrequesterror" in error_str
-                    and "data_inspection_failed" in error_str
-                ):
-
-                    def error_generator():
-                        yield self.API_CONTENT_REJECTION_OUTPUT
-
-                    return error_generator()
+                if self._is_content_policy_rejection(e):
+                    return self._handle_content_rejection_stream()
                 raise
 
         try:
@@ -104,4 +66,4 @@ class DoubaoModel(BaseModel):
                 if chunk.choices[0].delta.content is not None:
                     yield chunk.choices[0].delta.content
         except Exception:
-            yield self.API_ERROR_OUTPUT
+            yield self._handle_api_error()

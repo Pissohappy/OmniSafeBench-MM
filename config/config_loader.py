@@ -188,27 +188,11 @@ class ConfigLoader:
                 attack_names = test_case_cfg["attacks"]
                 attack_params = test_case_cfg.get("attack_params", {}) or {}
 
-                # Merge attack configurations
-                merged_attack_params = {}
-                for attack_name in attack_names:
-                    try:
-                        attack_config = self.load_attack_config(attack_name)
-                        base_params = attack_config.get("parameters", {})
-
-                        # If there are override parameters in general config, merge them
-                        if attack_name in attack_params:
-                            merged_attack_params[attack_name] = self._deep_merge(
-                                base_params, attack_params[attack_name]
-                            )
-                        else:
-                            merged_attack_params[attack_name] = base_params
-                    except FileNotFoundError:
-                        print(
-                            f"Warning: Attack configuration file does not exist: {attack_name}"
-                        )
-                        continue
-
-                test_case_cfg["attack_params"] = merged_attack_params
+                test_case_cfg["attack_params"] = self._merge_component_configs(
+                    component_names=attack_names,
+                    override_params=attack_params,
+                    config_loader_func=self.load_attack_config,
+                )
 
         # Process response generation configuration
         if "response_generation" in full_config:
@@ -245,31 +229,12 @@ class ConfigLoader:
                 defense_names = response_cfg["defenses"]
                 defense_overrides = response_cfg.get("defense_params", {}) or {}
 
-                # Merge defense configurations
-                merged_defense_params = {}
-                for defense_name in defense_names:
-                    if defense_name == "None":
-                        merged_defense_params[defense_name] = {}
-                        continue
-
-                    try:
-                        defense_config = self.load_defense_config(defense_name)
-                        base_params = defense_config.get("parameters", {})
-
-                        # If there are override parameters in general config, merge them
-                        if defense_name in defense_overrides:
-                            merged_defense_params[defense_name] = self._deep_merge(
-                                base_params, defense_overrides[defense_name]
-                            )
-                        else:
-                            merged_defense_params[defense_name] = base_params
-                    except FileNotFoundError:
-                        print(
-                            f"Warning: Defense configuration file does not exist: {defense_name}"
-                        )
-                        continue
-
-                response_cfg["defense_params"] = merged_defense_params
+                response_cfg["defense_params"] = self._merge_component_configs(
+                    component_names=defense_names,
+                    override_params=defense_overrides,
+                    config_loader_func=self.load_defense_config,
+                    skip_value="None",
+                )
 
         # Process evaluation configuration
         if "evaluation" in full_config:
@@ -360,6 +325,50 @@ class ConfigLoader:
                 result[key] = value
 
         return result
+
+    def _merge_component_configs(
+        self,
+        component_names: List[str],
+        override_params: Dict[str, Any],
+        config_loader_func,  # Callable: takes name, returns config dict
+        skip_value: str = None,
+    ) -> Dict[str, Any]:
+        """Merge component configurations from files with runtime overrides.
+
+        Args:
+            component_names: List of component names to process
+            override_params: Runtime override parameters from general_config
+            config_loader_func: Function to load base config for a component
+            skip_value: Special value that should be skipped with empty config
+
+        Returns:
+            Merged configuration dictionary
+        """
+        merged_params = {}
+
+        for component_name in component_names:
+            if skip_value is not None and component_name == skip_value:
+                merged_params[component_name] = {}
+                continue
+
+            try:
+                base_config = config_loader_func(component_name)
+                base_params = base_config.get("parameters", {})
+
+                if component_name in override_params:
+                    merged_params[component_name] = self._deep_merge(
+                        base_params, override_params[component_name]
+                    )
+                else:
+                    merged_params[component_name] = base_params
+
+            except FileNotFoundError:
+                print(
+                    f"Warning: Component configuration file does not exist: {component_name}"
+                )
+                continue
+
+        return merged_params
 
     def _load_yaml_file(self, file_path: Path) -> Dict[str, Any]:
         """Load YAML file"""

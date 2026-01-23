@@ -109,124 +109,79 @@ class UnifiedRegistry:
         self.evaluator_registry[name] = evaluator_class
         self.logger.debug(f"Registered evaluator: {name}")
 
-    def get_attack(self, name: str) -> Optional[Type["BaseAttack"]]:
-        """Get attack method class"""
-        if name in self.attack_registry:
-            return self.attack_registry[name]
+    def _get_component(
+        self,
+        name: str,
+        component_type: str,  # "attacks", "models", "defenses", "evaluators"
+    ) -> Optional[Type]:
+        """Generic component getter with lazy loading.
 
-        # Get mapping information from config/plugins.yaml
+        Args:
+            name: Component name
+            component_type: One of "attacks", "models", "defenses", "evaluators"
+
+        Returns:
+            Component class or None if not found
+        """
+        type_info = {
+            "attacks": ("attack_registry", "attack method"),
+            "models": ("model_registry", "model"),
+            "defenses": ("defense_registry", "defense method"),
+            "evaluators": ("evaluator_registry", "evaluator"),
+        }
+
+        if component_type not in type_info:
+            raise ValueError(f"Invalid component_type: {component_type}")
+
+        registry_attr, type_name = type_info[component_type]
+        registry = getattr(self, registry_attr)
+
+        # Check cache first
+        if name in registry:
+            return registry[name]
+
+        # Try lazy loading from plugins.yaml
         try:
             mappings = self._get_lazy_mappings()
-            if name in mappings["attacks"]:
-                module_path, class_name = mappings["attacks"][name]
+            if name in mappings[component_type]:
+                module_path, class_name = mappings[component_type][name]
                 module = importlib.import_module(module_path)
                 cls = getattr(module, class_name)
-                # Register to cache
-                self.attack_registry[name] = cls
+                # Cache for future access
+                registry[name] = cls
                 self.logger.debug(
-                    f"Successfully imported attack method from mapping: {name}"
+                    f"Successfully imported {type_name} from mapping: {name}"
                 )
                 return cls
         except (ImportError, AttributeError) as e:
             self.logger.debug(
-                f"Unable to import attack method '{name}' from mapping: {e}"
+                f"Unable to import {type_name} '{name}' from mapping: {e}"
             )
             return None
         except Exception as e:
             self.logger.error(
-                f"Unknown error occurred while importing attack method '{name}': {e}"
+                f"Unknown error occurred while importing {type_name} '{name}': {e}"
             )
             return None
 
-        self.logger.warning(f"Attack method '{name}' is not defined in mapping")
+        self.logger.warning(f"{type_name.capitalize()} '{name}' is not defined in mapping")
         return None
+
+    def get_attack(self, name: str) -> Optional[Type["BaseAttack"]]:
+        """Get attack method class"""
+        return self._get_component(name, "attacks")
 
     def get_model(self, name: str) -> Optional[Type["BaseModel"]]:
         """Get model class"""
-        if name in self.model_registry:
-            return self.model_registry[name]
-
-        # Get mapping information from config/plugins.yaml
-        try:
-            mappings = self._get_lazy_mappings()
-            if name in mappings["models"]:
-                module_path, class_name = mappings["models"][name]
-                module = importlib.import_module(module_path)
-                cls = getattr(module, class_name)
-                self.model_registry[name] = cls
-                self.logger.debug(f"Successfully imported model from mapping: {name}")
-                return cls
-        except (ImportError, AttributeError) as e:
-            self.logger.debug(f"Unable to import model '{name}' from mapping: {e}")
-            return None
-        except Exception as e:
-            self.logger.error(
-                f"Unknown error occurred while importing model '{name}': {e}"
-            )
-            return None
-
-        self.logger.warning(f"Model '{name}' is not defined in mapping")
-        return None
+        return self._get_component(name, "models")
 
     def get_defense(self, name: str) -> Optional[Type["BaseDefense"]]:
         """Get defense method class"""
-        if name in self.defense_registry:
-            return self.defense_registry[name]
-
-        # Get mapping information from config/plugins.yaml
-        try:
-            mappings = self._get_lazy_mappings()
-            if name in mappings["defenses"]:
-                module_path, class_name = mappings["defenses"][name]
-                module = importlib.import_module(module_path)
-                cls = getattr(module, class_name)
-                self.defense_registry[name] = cls
-                self.logger.debug(
-                    f"Successfully imported defense method from mapping: {name}"
-                )
-                return cls
-        except (ImportError, AttributeError) as e:
-            self.logger.debug(
-                f"Unable to import defense method '{name}' from mapping: {e}"
-            )
-            return None
-        except Exception as e:
-            self.logger.error(
-                f"Unknown error occurred while importing defense method '{name}': {e}"
-            )
-            return None
-
-        self.logger.warning(f"Defense method '{name}' is not defined in mapping")
-        return None
+        return self._get_component(name, "defenses")
 
     def get_evaluator(self, name: str) -> Optional[Type["BaseEvaluator"]]:
         """Get evaluator class"""
-        if name in self.evaluator_registry:
-            return self.evaluator_registry[name]
-
-        # Get mapping information from config/plugins.yaml
-        try:
-            mappings = self._get_lazy_mappings()
-            if name in mappings["evaluators"]:
-                module_path, class_name = mappings["evaluators"][name]
-                module = importlib.import_module(module_path)
-                cls = getattr(module, class_name)
-                self.evaluator_registry[name] = cls
-                self.logger.debug(
-                    f"Successfully imported evaluator from mapping: {name}"
-                )
-                return cls
-        except (ImportError, AttributeError) as e:
-            self.logger.debug(f"Unable to import evaluator '{name}' from mapping: {e}")
-            return None
-        except Exception as e:
-            self.logger.error(
-                f"Unknown error occurred while importing evaluator '{name}': {e}"
-            )
-            return None
-
-        self.logger.warning(f"Evaluator '{name}' is not defined in mapping")
-        return None
+        return self._get_component(name, "evaluators")
 
     def create_attack(
         self, name: str, config: Dict[str, Any] = None, output_image_dir: str = None

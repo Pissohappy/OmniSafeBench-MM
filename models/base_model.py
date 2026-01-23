@@ -18,6 +18,21 @@ class BaseModel(CoreBaseModel):
     API_MAX_RETRY = 3
     API_TIMEOUT = 600
 
+    # Content policy detection keywords (common across providers)
+    CONTENT_POLICY_KEYWORDS = [
+        "content policy",
+        "safety",
+        "harmful",
+        "unsafe",
+        "violation",
+        "moderation",
+        "data_inspection_failed",
+        "inappropriate content",
+    ]
+
+    # Provider-specific additional keywords (subclasses can override)
+    PROVIDER_SPECIFIC_KEYWORDS = []
+
     def __init__(self, model_name: str, api_key: str = None, base_url: str = None):
         # Call parent class __init__, pass empty configuration
         super().__init__(config={})
@@ -75,6 +90,46 @@ class BaseModel(CoreBaseModel):
             return "api"
         else:
             return "local"
+
+    def _is_content_policy_rejection(self, error: Exception) -> bool:
+        """Check if an exception represents a content policy rejection.
+
+        Args:
+            error: The exception to check
+
+        Returns:
+            True if the error indicates content policy rejection
+        """
+        error_str = str(error).lower()
+
+        # Combine common and provider-specific keywords
+        all_keywords = self.CONTENT_POLICY_KEYWORDS + self.PROVIDER_SPECIFIC_KEYWORDS
+
+        return any(keyword in error_str for keyword in all_keywords)
+
+    def _handle_content_rejection(self) -> str:
+        """Return the standard content rejection output."""
+        return self.API_CONTENT_REJECTION_OUTPUT
+
+    def _handle_content_rejection_stream(self):
+        """Return a generator that yields the content rejection placeholder."""
+
+        def error_generator():
+            yield self.API_CONTENT_REJECTION_OUTPUT
+
+        return error_generator()
+
+    def _handle_api_error(self) -> str:
+        """Return the standard API error output."""
+        return self.API_ERROR_OUTPUT
+
+    def _handle_api_error_stream(self):
+        """Return a generator that yields the API error placeholder."""
+
+        def error_generator():
+            yield self.API_ERROR_OUTPUT
+
+        return error_generator()
 
     def _retry_with_backoff(self, func, *args, **kwargs):
         """Execute function with retry logic and exponential backoff using backoff library."""
