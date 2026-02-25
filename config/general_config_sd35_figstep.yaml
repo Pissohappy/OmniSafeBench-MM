@@ -1,0 +1,31 @@
+evaluation:
+  evaluator_params:
+    default_judge:
+      max_tokens: 2000
+      max_workers: 4
+      model: gpt-oss-120b
+      success_threshold: 3
+      temperature: 0.0
+    model: gpt-oss-120b
+  evaluators:
+  - default_judge
+experiment:
+  mode: response_only
+  random_seed: 42
+  verbose: false
+response_generation:
+  defenses:
+  - None
+  models:
+  - Kimi-VL-A3B-Instruct
+system:
+  batch_size: 8
+  log_file: logs/experiment_sd35_figstep.log
+  log_level: INFO
+  max_workers: 1
+  output_dir: output/
+test_case_generation:
+  attacks:
+  - sd35_figstep
+  input:
+    behaviors_file: /mnt/disk1/szchen/VLMBenchmark/repo/OmniSafeBench-MM/dataset/data_full.json

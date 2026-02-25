@@ -5,6 +5,7 @@ version: 1
 plugins:
   attacks:
     figstep: [attacks.figstep.attack, FigStepAttack]
+    sd35_figstep: [attacks.sd35_figstep.attack, SD35FigStepAttack]
     cs_dj: [attacks.cs_dj.attack, CSDJAttack]
     hades: [attacks.hades.attack, HadesAttack]
     qr: [attacks.qr.attack, QRAttack]
@@ -53,5 +54,4 @@ plugins:
   evaluators:
     default_judge: [evaluators.default_judge, DefaultJudge]
     # gpt-oss-120b: [evaluators.default_judge, DefaultJudge]
-
 
