@@ -58,6 +58,45 @@ A one-stop multimodal jailbreak/defense evaluation framework for beginners, cove
 4. **Run the full pipeline** (generate test cases → responses → evaluation):
    - `python run_pipeline.py --config config/general_config.yaml --full`
 
+## ⚡ SD35-FigStep quick start
+
+Use `config/general_config_figstep_vs_sd35.yaml` as a controlled comparison config:
+- same `behaviors_file`
+- same `response_generation.models`
+- same `response_generation.defenses`
+- same evaluator settings
+
+1. Generate test cases **twice** (different attack output dirs):
+```bash
+# Run 1: FigStep
+python run_pipeline.py --config config/general_config_figstep_vs_sd35.yaml --stage test_case_generation
+
+# Run 2: SD35-FigStep (switch test_case_generation.attacks to [sd35_figstep] in the same config)
+python run_pipeline.py --config config/general_config_figstep_vs_sd35.yaml --stage test_case_generation
+```
+
+2. Run response/evaluation separately for each attack:
+```bash
+# FigStep
+python run_pipeline.py --config config/general_config_figstep_vs_sd35.yaml --stage response_generation --test-cases-file output/test_cases/figstep/test_cases.jsonl
+python run_pipeline.py --config config/general_config_figstep_vs_sd35.yaml --stage evaluation --input-file <path_to_figstep_responses.jsonl>
+
+# SD35-FigStep
+python run_pipeline.py --config config/general_config_figstep_vs_sd35.yaml --stage response_generation --test-cases-file output/test_cases/sd35_figstep/test_cases.jsonl
+python run_pipeline.py --config config/general_config_figstep_vs_sd35.yaml --stage evaluation --input-file <path_to_sd35_figstep_responses.jsonl>
+```
+
+3. Aggregate by `attack_method` and compare ASR + fine-grained scores:
+```bash
+python scripts/compare_attack_results.py   --inputs <path_to_figstep_eval.jsonl> <path_to_sd35_figstep_eval.jsonl>   --output output/compare_figstep_vs_sd35.json
+```
+
+If you use the legacy batch response script, it is now attack-parameterized:
+```bash
+python batch_eval_figstep.py --attack figstep
+python batch_eval_figstep.py --attack sd35_figstep
+```
+
 ## 📋 Prerequisites (Configure as Needed)
 
 Depending on the attack/defense methods used, the following additional configurations may be required:
