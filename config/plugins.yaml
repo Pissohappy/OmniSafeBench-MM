@@ -55,4 +55,3 @@ plugins:
     default_judge: [evaluators.default_judge, DefaultJudge]
     # gpt-oss-120b: [evaluators.default_judge, DefaultJudge]
 
-

@@ -1,6 +1,7 @@
 name: "sd35_figstep"
 
 parameters:
+  # Keep FigStep generation settings aligned for fair comparison.
   font_path: "attacks/Arial Font/ARIAL.TTF"
   font_size: 70
   wrap_width: 18
