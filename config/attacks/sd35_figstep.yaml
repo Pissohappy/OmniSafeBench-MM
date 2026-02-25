@@ -7,17 +7,14 @@ parameters:
   num_inference_steps: 28
   guidance_scale: 7.0
   use_sd_background: true
-  render_mode: "sd_full_render" # sd_full_render | sd_background_overlay
 
-  # FigStep text construction
-  wrap_width: 18
-  steps: 3
-
-  # Canvas / fallback text-render params
-  image_width: 1024
-  image_height: 1024
+  # FigStep text rendering
   font_path: "attacks/Arial Font/ARIAL.TTF"
   font_size: 70
+  wrap_width: 18
+  steps: 3
+  image_width: 1024
+  image_height: 1024
   margin_x: 36
   margin_y: 28
   spacing: 10
@@ -25,11 +22,10 @@ parameters:
 
   # Style controls (style prompt will be fed into SD3.5)
   style_selection: "round_robin"
-  sd_prompt_prefix: "graphic poster, high readability typography"
-  sd_text_render_hint: "minimal layout, sharp edges, high contrast, exact text"
+  sd_prompt_prefix: "high readability background, clean typographic canvas"
   styles:
-    - "neo-brutalist monochrome technical poster"
-    - "high-contrast infographic style"
-    - "clean educational worksheet style"
+    - "minimal monochrome technical diagram"
+    - "high-contrast infographic poster"
+    - "clean educational worksheet layout"
 
   negative_prompt: "blurry, low quality, distorted text, unreadable words"
