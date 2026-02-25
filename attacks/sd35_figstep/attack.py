@@ -24,8 +24,9 @@ def _wrap_text(text: str, width: int) -> str:
     return textwrap.fill(text, width=width)
 
 
-def _seed_from_case_id(base_seed: int, case_id: str) -> int:
-    digest = hashlib.sha256(case_id.encode("utf-8")).hexdigest()
+def _seed_from_case_id(base_seed: int, case_id: str | int) -> int:
+    case_id_str = str(case_id)
+    digest = hashlib.sha256(case_id_str.encode("utf-8")).hexdigest()
     return base_seed + int(digest[:8], 16)
 
 
@@ -89,12 +90,12 @@ class SD35FigStepAttack(BaseAttack):
         if self.cfg.per_case_seed_mode not in {"fixed", "hash"}:
             raise ValueError("per_case_seed_mode must be one of: fixed, hash")
 
-    def _resolve_seed(self, case_id: str) -> int:
+    def _resolve_seed(self, case_id: str | int) -> int:
         if self.cfg.per_case_seed_mode == "fixed":
             return int(self.cfg.seed)
         return _seed_from_case_id(int(self.cfg.seed), case_id)
 
-    def _choose_style(self, case_id: str) -> str:
+    def _choose_style(self, case_id: str | int) -> str:
         local_seed = self._resolve_seed(case_id)
         rng = random.Random(local_seed)
         return rng.choice(self.cfg.styles)
