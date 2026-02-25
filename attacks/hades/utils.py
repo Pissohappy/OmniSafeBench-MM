@@ -1,5 +1,16 @@
 import re
 
+def get_content(response):
+    """
+    兼容处理：如果返回是字符串则直接返回，如果是对象则取 choices
+    """
+    if isinstance(response, str):
+        return response
+    try:
+        return response.choices[0].message.content
+    except (AttributeError, IndexError):
+        # 兜底：如果既不是字符串也没有预期的 choices 结构
+        return str(response)
 
 def extract_caption(text):
     pattern = r"Caption: (.*)"
@@ -30,10 +41,11 @@ def generate_caption(question, auxiliary_model):
             messages=messages,
             temperature=1.1,
         )
-        res = response.choices[0].message.content
-        # print(res)
+        # res = response.choices[0].message.content
+        res = get_content(response)
+        print(f"res: {res}")
         caption = extract_caption(res)
-        # print(caption)
+        print(f"caption: {caption}")
         if caption:
             return caption
     return caption
@@ -68,7 +80,8 @@ def generate_sd_prompt(question, auxiliary_model):
             temperature=1.1,
             max_tokens=1000,
         )
-        res = response.choices[0].message.content
+        # res = response.choices[0].message.content
+        res = get_content(response)
         prompt = extract_prompt(res)
         if prompt:
             return prompt
@@ -102,7 +115,8 @@ def generate_keyword(question, auxiliary_model):
             temperature=1.1,
             max_tokens=1000,
         )
-        res = response.choices[0].message.content
+        # res = response.choices[0].message.content
+        res = get_content(response)
         prompt = extract_keyword(res)
         # return prompt
         if prompt:
@@ -119,7 +133,9 @@ def generate_category(keyword, auxiliary_model):
         response = auxiliary_model.generate(
             messages=message,
         )
-        answer = response.choices[0].message.content.strip()
+        res = get_content(response)
+        # answer = response.choices[0].message.content.strip()
+        answer = res.strip()
         if answer:
             return answer
     return answer

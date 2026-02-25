@@ -2,8 +2,9 @@ name: "cs_dj"
 
 parameters:
   # === Path Configuration ===
-  src_dir: "/path/to/liuhaotian/LLaVA-CC3M-Pretrain-595K/images"
-  clip_path: "/path/to/sentence-transformers/clip-ViT-L-14"
+  # src_dir: "/path/to/liuhaotian/LLaVA-CC3M-Pretrain-595K/images"
+  src_dir: "/mnt/disk1/szchen/VLMBenchmark/repo/OmniSafeBench-MM/dataset/LLaVA-CC3M-Pretrain-595K"
+  clip_path: "/mnt/disk1/weights/vlm/clip-ViT-L-14"
   save_embeding_path: image_embedding
   save_map_path: "image_map"
 

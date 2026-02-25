@@ -124,7 +124,13 @@ class FigStepAttack(BaseAttack):
             fg=self.cfg.fg,
         )
 
-        img_path = self.output_image_dir / f"{case_id}.png"
+        # Ensure output directory exists
+        if self.output_image_dir:
+            self.output_image_dir.mkdir(parents=True, exist_ok=True)
+            img_path = self.output_image_dir / f"{case_id}.png"
+        else:
+            raise ValueError("output_image_dir is not set")
+
         img.save(img_path)  ## Save image
 
         return self.create_test_case(

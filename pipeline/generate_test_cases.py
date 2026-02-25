@@ -96,6 +96,18 @@ class TestCaseGenerator(BasePipeline):
             attack_name, attack_config, output_image_dir=str(image_save_dir)
         )
 
+        # Add detailed error logging if attack is None
+        if attack is None:
+            self.logger.error(
+                f"Failed to create attack instance for '{attack_name}'. "
+                f"Config: {attack_config}, Output dir: {image_save_dir}"
+            )
+            raise RuntimeError(
+                f"Attack '{attack_name}' could not be instantiated. "
+                f"Check if the attack is properly registered in config/plugins.yaml "
+                f"and that all dependencies are installed."
+            )
+
         test_case = attack.generate_test_case(
             original_prompt,
             image_path,
@@ -168,7 +180,8 @@ class TestCaseGenerator(BasePipeline):
                     batch_size,
                     output_file_path,
                     image_save_dir,
-                    max_workers_override=policy.max_workers,
+                    # max_workers_override=policy.max_workers,
+                    max_workers_override=1
                 )
 
         except Exception as e:

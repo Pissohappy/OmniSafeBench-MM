@@ -18,15 +18,24 @@
 providers:
   # OpenAI Provider
   openai:
-    api_key: "sk-your-openai-api-key-here"  # Write specific API key directly
-    base_url: null  # Use OpenAI official API
+    api_key: "sk-WE6FQhZoEr4nBz4KTqHuzAYixq6pQG07VZbRhcHaWdGtMTs2"  # Write specific API key directly
+    base_url: "https://api.whatai.cc/v1"  # Use OpenAI official API
+    # api_key: "sk-WfpmwP9V5AmEABkeC5C435F58e9d4220A2D6070fD3AbC6Cd"
     models:
+      gpt-4o-mini:
+        model_name: "gpt-4o-mini"
+        max_tokens: 1000
+        temperature: 0.0
       gpt-5:
         model_name: "gpt-5"
         max_tokens: 1000
         temperature: 0.0
       gpt-4-turbo:
         model_name: "gpt-4-turbo"
+        max_tokens: 1000
+        temperature: 0.0
+      gpt-3.5-turbo:
+        model_name: "gpt-3.5-turbo"
         max_tokens: 1000
         temperature: 0.0
 
@@ -81,14 +90,130 @@ providers:
   # vLLM Open Source Model Provider
   vllm:
     api_key: "dummy"  # vLLM does not require a real API key
-    base_url: "http://localhost:8000/v1"  # Default base_url
+    # base_url: "http://localhost:8000/v1"  # Default base_url
+    base_url: "http://localhost:8005/v1"  # Model-level override
     models:
-      # target model
-      qwen3-vl-30b:
-        model_name: "Qwen3-VL-30B-A3B-Instruct"
-        max_tokens: 1000
+      # target model - YOUR LOCAL QWEN3VL
+      # qwen3-vl-8b:
+      #   model_name: "qwen3-vl-8b"
+      #   max_tokens: 2000
+      #   temperature: 0.0
+      #   base_url: "http://localhost:8008/v1"  # Model-level override
+      deepseek-vl2:
+        model_name: "deepseek-vl2"
+        max_tokens: 2000
         temperature: 0.0
-        base_url: "http://localhost:8008/v1"  # Model-level override
+      deepseek-vl2-small:
+        model_name: "deepseek-vl2-small"
+        max_tokens: 2000
+        temperature: 0.0
+      deepseek-vl2-tiny:
+        model_name: "deepseek-vl2-tiny"
+        max_tokens: 2000
+        temperature: 0.0
+      
+      Qwen3-VL-8B-Instruct:
+        model_name: "Qwen3-VL-8B-Instruct"
+        max_tokens: 2000
+        temperature: 0.0
+      Qwen3-VL-8B-Thinking:
+        model_name: "Qwen3-VL-8B-Thinking"
+        max_tokens: 2000
+        temperature: 0.0
+      Qwen3-VL-30B-A3B-Instruct:
+        model_name: "Qwen3-VL-30B-A3B-Instruct"
+        max_tokens: 2000
+        temperature: 0.0
+      Qwen3-VL-30B-A3B-Thinking:
+        model_name: "Qwen3-VL-30B-A3B-Thinking"
+        max_tokens: 2000
+        temperature: 0.0
+      
+      gemma-3-4b-it:
+        model_name: "gemma-3-4b-it"
+        max_tokens: 2000
+        temperature: 0.0
+      gemma-3-12b-it:
+        model_name: "gemma-3-12b-it"
+        max_tokens: 2000
+        temperature: 0.0
+      gemma-3-27b-it:
+        model_name: "gemma-3-27b-it"
+        max_tokens: 2000
+        temperature: 0.0
+      
+      Kimi-VL-A3B-Instruct:
+        model_name: "Kimi-VL-A3B-Instruct"
+        max_tokens: 2000
+        temperature: 0.0
+      Kimi-VL-A3B-Thinking-2506:
+        model_name: "Kimi-VL-A3B-Thinking-2506"
+        max_tokens: 2000
+        temperature: 0.0
+      
+      GLM-4.6V-Flash:
+        model_name: "GLM-4.6V-Flash"
+        max_tokens: 2000
+        temperature: 0.0
+      GLM-4.1V-9B-Thinking:
+        model_name: "GLM-4.1V-9B-Thinking"
+        max_tokens: 2000
+        temperature: 0.0
+      
+      Step3-VL-10B:
+        model_name: "Step3-VL-10B"
+        max_tokens: 2000
+        temperature: 0.0
+      Youtu-VL-4B-Instruct:
+        model_name: "Youtu-VL-4B-Instruct"
+        max_tokens: 2000
+        temperature: 0.0
+      
+      InternVL3_5-14B-Flash:
+        model_name: "InternVL3_5-14B-Flash"
+        max_tokens: 2000
+        temperature: 0.0
+      InternVL3_5-8B:
+        model_name: "InternVL3_5-8B"
+        max_tokens: 2000
+        temperature: 0.0
+      InternVL3_5-8B-Flash:
+        model_name: "InternVL3_5-8B-Flash"
+        max_tokens: 2000
+        temperature: 0.0
+      
+      Llama-4-Scout-17B-16E-Instruct:
+        model_name: "Llama-4-Scout-17B-16E-Instruct"
+        max_tokens: 2000
+        temperature: 0.0
+      Llama-Guard-4-12B:
+        model_name: "Llama-Guard-4-12B"
+        max_tokens: 2000
+        temperature: 0.0
+
+      llava-onevision-qwen2-7b-ov-chat-hf:
+        model_name: "llava-onevision-qwen2-7b-ov-chat-hf"
+        max_tokens: 2000
+        temperature: 0.0
+      llava-onevision-qwen2-7b-ov-hf:
+        model_name: "llava-onevision-qwen2-7b-ov-hf"
+        max_tokens: 2000
+        temperature: 0.0
+      llava-onevision-qwen2-7b-si-hf:
+        model_name: "llava-onevision-qwen2-7b-si-hf"
+        max_tokens: 2000
+        temperature: 0.0
+      llava-v1.6-mistral-7b-hf:
+        model_name: "llava-v1.6-mistral-7b-hf"
+        max_tokens: 2000
+        temperature: 0.0
+
+      gpt-oss-120b:
+        model_name: "gpt-oss-120b"
+        max_tokens: 4096
+        temperature: 0.0
+
+      
 
       # defense model
 
@@ -119,16 +244,16 @@ providers:
         base_url: "http://localhost:8024/v1"
 
       # evaluation model
-      gpt-oss:120b:
-        model_name: "gpt-oss:120b"
-        max_tokens: 1000
-        temperature: 0.0
-        base_url: "http://localhost:8005/v1"
+      # gpt-oss-120b:
+      #   model_name: "gpt-oss-120b"
+      #   max_tokens: 1000
+      #   temperature: 0.0
+      #   base_url: "http://localhost:8005/v1"
 
   # Any platform compatible with OpenAI
   any:
-    api_key: "your-api-key"  # Write specific API key directly
-    base_url: "your-base-url"  # Model-level override
+    api_key: "sk-WE6FQhZoEr4nBz4KTqHuzAYixq6pQG07VZbRhcHaWdGtMTs2"  # Write specific API key directly
+    base_url: "https://api.whatai.cc/v1"  # Model-level override
     models:
       gpt-4o:
         model_name: "gpt-4o"

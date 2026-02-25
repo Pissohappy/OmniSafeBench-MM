@@ -3,7 +3,7 @@ name: "qr"
 parameters:
 
   # SD model path
-  stable_diffusion_path: "/path/to/stabilityai/stable-diffusion-3.5-medium"
+  stable_diffusion_path: "/mnt/disk1/weights/t2i/stable-diffusion-3.5-medium"
   
   # Rendering parameters
   font_size: 80

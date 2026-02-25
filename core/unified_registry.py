@@ -154,9 +154,13 @@ class UnifiedRegistry:
                 )
                 return cls
         except (ImportError, AttributeError) as e:
-            self.logger.debug(
-                f"Unable to import {type_name} '{name}' from mapping: {e}"
+            self.logger.error(
+                f"Unable to import {type_name} '{name}' from mapping: {e}. "
+                f"Module path: {module_path if 'module_path' in locals() else 'unknown'}, "
+                f"Class name: {class_name if 'class_name' in locals() else 'unknown'}"
             )
+            import traceback
+            self.logger.error(f"Import traceback:\n{traceback.format_exc()}")
             return None
         except Exception as e:
             self.logger.error(

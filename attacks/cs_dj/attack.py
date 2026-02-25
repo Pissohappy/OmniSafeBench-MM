@@ -332,8 +332,16 @@ class CSDJAttack(BaseAttack):
         ]
         random.shuffle(img_list)
         selected = img_list[: cfg.num_images]
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # model = SentenceTransformer(cfg.clip_path)
+        # model = SentenceTransformer(cfg.clip_path, device=device)
+        device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        model = SentenceTransformer(cfg.clip_path)
+        model = SentenceTransformer(cfg.clip_path, device="cpu")
+
+        if device == "cuda":
+            model = model.cuda()
+
         result = []
         for name in selected:
             full = os.path.join(cfg.src_dir, name)
@@ -382,8 +390,24 @@ class CSDJAttack(BaseAttack):
         image_paths = [it["img_path"] for it in emb_data]
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # device = torch.device("cpu")
         image_embeddings = image_embeddings.to(device)
-        model = SentenceTransformer(self.cfg.clip_path).to(device)
+        # print(f"--- DEBUG: device = {device} ---")
+        # 在 model = SentenceTransformer(...) 之前添加：
+        # import os
+        # print(f"--- DEBUG: clip_path = {self.cfg.clip_path} ---")
+        # print(f"--- DEBUG: Path exists? {os.path.exists(self.cfg.clip_path)} ---")
+        # if os.path.isdir(self.cfg.clip_path):
+        #     print(f"--- DEBUG: Files in path: {os.listdir(self.cfg.clip_path)} ---")
+        # model = SentenceTransformer(self.cfg.clip_path).to(device)
+        # model = SentenceTransformer(self.cfg.clip_path, device=device)
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        model = SentenceTransformer(cfg.clip_path, device="cpu")
+
+        if device == "cuda":
+            model = model.cuda()
+
 
         results: Dict[str, List[str]] = {}
         for q in all_instructions:

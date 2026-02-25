@@ -392,14 +392,16 @@ class ConfigLoader:
             raise ValueError(f"Unsupported configuration file format: {suffix}")
 
 
-def load_config(config_file: str = "config/general_config.yaml") -> PipelineConfig:
+def load_config(config_file: str = "config/general_config.yaml",
+                model_config_file: Optional[str] = None) -> PipelineConfig:
     """
     Configuration loading function
 
     Args:
         config_file: Configuration file path, can be full path or relative path
                     Function will automatically split into config directory path and general config file name
-
+        model_config_file: Specific model config filename (e.g., 'tmp_mod_hades.yaml')
+                          If None, defaults to 'model_config.yaml'
     Returns:
         PipelineConfig object
     """
@@ -414,7 +416,17 @@ def load_config(config_file: str = "config/general_config.yaml") -> PipelineConf
 
     # Create configuration loader and load all configurations
     loader = ConfigLoader(config_dir)
-    return loader.load_all_configs(general_config_file)
+
+    general_config = loader.load_general_config(general_config_file)
+
+    if model_config_file:
+        model_config = loader.load_model_config(model_config_file)
+    else:
+        model_config = loader.load_model_config()
+    # return loader.load_all_configs(general_config_file)
+
+    full_config = loader._build_full_config(general_config, model_config)
+    return PipelineConfig.from_dict(full_config)
 
 
 def validate_config(config: PipelineConfig) -> bool:

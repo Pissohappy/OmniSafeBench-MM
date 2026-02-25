@@ -142,6 +142,7 @@ def parse_args():
     mode_group.add_argument("--full", action="store_true", help="Run full Pipeline")
 
     # General options
+    parser.add_argument("--model-config", type=str, help="Model configuation filename(e.g., model_config_hades.yaml) Should be in the same directory as --config.")
     parser.add_argument("--config", type=str, help="Configuration file path")
     parser.add_argument(
         "--input-file", type=str, help="Input file path (for continuing run)"
@@ -184,7 +185,7 @@ def main():
         logger.info(f"Loading configuration file: {args.config}")
 
         # Load configuration (load_config automatically extracts config directory from config file path)
-        config = load_config(args.config)
+        config = load_config(args.config, model_config_file=args.model_config)
 
         # Override output directory
         if args.output_dir:

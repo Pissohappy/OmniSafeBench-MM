@@ -1,0 +1,235 @@
+defaults:
+  log_level: INFO
+  max_tokens: 1000
+  temperature: 0.0
+providers:
+  anthropic:
+    api_key: sk-ant-your-anthropic-api-key-here
+    models:
+      claude-haiku:
+        max_tokens: 4000
+        model_name: claude-3-haiku-20240307
+        temperature: 0.0
+      claude-sonnet-4:
+        max_tokens: 4000
+        model_name: claude-3-5-sonnet-20241022
+        temperature: 0.0
+  any:
+    api_key: sk-WE6FQhZoEr4nBz4KTqHuzAYixq6pQG07VZbRhcHaWdGtMTs2
+    base_url: https://api.whatai.cc/v1
+    models:
+      gpt-3.5-turbo:
+        max_tokens: 1000
+        model_name: gpt-3.5-turbo
+        temperature: 0.0
+      gpt-4o:
+        max_tokens: 2000
+        model_name: gpt-4o
+        temperature: 0.0
+      gpt-4o-mini:
+        max_tokens: 2000
+        model_name: gpt-4o-mini
+        temperature: 0.0
+  doubao:
+    api_key: your-doubao-api-key-here
+    models:
+      doubao-vision-lite:
+        max_tokens: 2000
+        model_name: doubao-1.5-vision-lite-250315
+        temperature: 0.0
+  google:
+    api_key: your-google-api-key-here
+    models:
+      gemini-2.5-flash:
+        max_tokens: 1000
+        model_name: gemini-2.5-flash
+        temperature: 0.0
+      gemini-2.5-pro:
+        max_tokens: 2000
+        model_name: gemini-2.5-pro
+        temperature: 0.0
+  openai:
+    api_key: sk-WE6FQhZoEr4nBz4KTqHuzAYixq6pQG07VZbRhcHaWdGtMTs2
+    base_url: https://api.whatai.cc/v1
+    models:
+      gpt-3.5-turbo:
+        max_tokens: 1000
+        model_name: gpt-3.5-turbo
+        temperature: 0.0
+      gpt-4-turbo:
+        max_tokens: 1000
+        model_name: gpt-4-turbo
+        temperature: 0.0
+      gpt-4o-mini:
+        max_tokens: 1000
+        model_name: gpt-4o-mini
+        temperature: 0.0
+      gpt-5:
+        max_tokens: 1000
+        model_name: gpt-5
+        temperature: 0.0
+  qwen:
+    api_key: your-qwen-api-key-here
+    models:
+      qwen3-vl-flash:
+        max_tokens: 2000
+        model_name: qwen3-vl-flash
+        temperature: 0.0
+      qwen3-vl-plus:
+        max_tokens: 2000
+        model_name: qwen3-vl-plus
+        temperature: 0.0
+  vllm:
+    api_key: dummy
+    base_url: http://localhost:8010/v1
+    models:
+      GLM-4.6V-Flash:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: GLM-4.6V-Flash
+        temperature: 0.0
+      InternVL3_5-14B-Flash:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: InternVL3_5-14B-Flash
+        temperature: 0.0
+      InternVL3_5-8B:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: InternVL3_5-8B
+        temperature: 0.0
+      InternVL3_5-8B-Flash:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: InternVL3_5-8B-Flash
+        temperature: 0.0
+      Kimi-VL-A3B-Instruct:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: Kimi-VL-A3B-Instruct
+        temperature: 0.0
+      Kimi-VL-A3B-Thinking-2506:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: Kimi-VL-A3B-Thinking-2506
+        temperature: 0.0
+      Llama-4-Scout-17B-16E-Instruct:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: Llama-4-Scout-17B-16E-Instruct
+        temperature: 0.0
+      Llama-Guard-4-12B:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: Llama-Guard-4-12B
+        temperature: 0.0
+      Qwen3-VL-30B-A3B-Instruct:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: Qwen3-VL-30B-A3B-Instruct
+        temperature: 0.0
+      Qwen3-VL-30B-A3B-Thinking:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: Qwen3-VL-30B-A3B-Thinking
+        temperature: 0.0
+      Qwen3-VL-8B-Instruct:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: Qwen3-VL-8B-Instruct
+        temperature: 0.0
+      Qwen3-VL-8B-Thinking:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: Qwen3-VL-8B-Thinking
+        temperature: 0.0
+      ShieldLM-14B-qwen:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: ShieldLM-14B-qwen
+        temperature: 0.0
+      Step3-VL-10B:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: Step3-VL-10B
+        temperature: 0.0
+      Youtu-VL-4B-Instruct:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: Youtu-VL-4B-Instruct
+        temperature: 0.0
+      deepseek-vl2:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: deepseek-vl2
+        temperature: 0.0
+      deepseek-vl2-small:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: deepseek-vl2-small
+        temperature: 0.0
+      deepseek-vl2-tiny:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: deepseek-vl2-tiny
+        temperature: 0.0
+      gemma-3-12b-it:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: gemma-3-12b-it
+        temperature: 0.0
+      gemma-3-27b-it:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: gemma-3-27b-it
+        temperature: 0.0
+      gemma-3-4b-it:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: gemma-3-4b-it
+        temperature: 0.0
+      gpt-oss:120b:
+        base_url: http://localhost:8010/v1
+        max_tokens: 1000
+        model_name: gpt-oss:120b
+        temperature: 0.0
+      guardreasoner_vl:
+        base_url: http://localhost:8010/v1
+        max_tokens: 10000
+        model_name: guardreasoner_vl
+        temperature: 0.0
+      llama_guard_3:
+        base_url: http://localhost:8010/v1
+        max_tokens: 1000
+        model_name: llama_guard_3
+        temperature: 0.0
+      llama_guard_4:
+        base_url: http://localhost:8010/v1
+        max_tokens: 1000
+        model_name: llama_guard_4
+        temperature: 0.0
+      llava-onevision-qwen2-7b-ov-chat-hf:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: llava-onevision-qwen2-7b-ov-chat-hf
+        temperature: 0.0
+      llava-onevision-qwen2-7b-ov-hf:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: llava-onevision-qwen2-7b-ov-hf
+        temperature: 0.0
+      llava-onevision-qwen2-7b-si-hf:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: llava-onevision-qwen2-7b-si-hf
+        temperature: 0.0
+      llava-v1.6-mistral-7b-hf:
+        base_url: http://localhost:8010/v1
+        max_tokens: 2000
+        model_name: llava-v1.6-mistral-7b-hf
+        temperature: 0.0
+      llavaguard:
+        base_url: http://localhost:8010/v1
+        max_tokens: 1000
+        model_name: llavaguard
+        temperature: 0.0

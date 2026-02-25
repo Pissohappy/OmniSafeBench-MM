@@ -1,7 +1,7 @@
 name: himrd
 
 parameters:
-  stable_diffusion_path: /path/to/stabilityai/stable-diffusion-3.5-medium
+  stable_diffusion_path: /mnt/disk1/weights/t2i/stable-diffusion-3.5-medium
   t2i_model_key: stable-diffusion-3-medium
   t2i_device: cuda:0
   t2i_dtype: float16

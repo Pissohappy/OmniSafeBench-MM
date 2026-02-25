@@ -28,6 +28,7 @@ plugins:
     vllm: [models.vllm_model, VLLMModel]
     mistral: [models.mistral_model, MistralModel]
     any: [models.openai_model, OpenAIModel]
+    # gpt-oss-120b: [models.vllm_model, VLLMModel]
 
   defenses:
     adashield: [defenses.adashield, AdaShieldDefense]
@@ -51,5 +52,6 @@ plugins:
 
   evaluators:
     default_judge: [evaluators.default_judge, DefaultJudge]
+    # gpt-oss-120b: [evaluators.default_judge, DefaultJudge]
 
 

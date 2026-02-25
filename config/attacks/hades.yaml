@@ -2,12 +2,12 @@ name: "hades"
 
 parameters:
   # === Image Generation Configuration ===
-  pixart_path: "/path/to/PixArt-alpha/PixArt-XL-2-1024-MS"
+  pixart_path: "/mnt/disk1/weights/t2i/PixArt-alpha/PixArt-XL-2-1024-MS"
   creat_image: true
   iter_steps: 3  # Iteration steps
 
   # === Font Configuration ===
-  font_path: "attacks/Arial Font/ARIAL.TTF"
+  font_path: "/mnt/disk1/szchen/VLMBenchmark/repo/OmniSafeBench-MM/attacks/Arial Font/ARIAL.TTF"
   font_size: 70
 
   # === API Configuration ===

@@ -218,3 +218,5 @@ __marimo__/
 .vscode
 CLAUDE.md
 output/
+dataset/
+logs/

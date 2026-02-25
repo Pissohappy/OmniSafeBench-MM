@@ -183,6 +183,13 @@ class HadesAttack(BaseAttack):
         image_save_path = output_dir / image_filename
         new_image.save(image_save_path)
 
+        # 增加以下打印
+        print(f"DEBUG - Case {case_id}")
+        print(f"  - Original Prompt: {original_prompt}")
+        print(f"  - Caption: {caption}")
+        print(f"  - Keyword: '{keyword}'")
+        print(f"  - Category: '{category}'")
+
         return self.create_test_case(
             case_id=case_id,
             jailbreak_prompt=adv_prompt,
