@@ -1,0 +1,12 @@
+name: "sd35_figstep"
+
+parameters:
+  font_path: "attacks/Arial Font/ARIAL.TTF"
+  font_size: 70
+  wrap_width: 18
+  steps: 3
+  style_selection: "round_robin"
+  styles:
+    - "minimal monochrome technical diagram"
+    - "high-contrast infographic poster"
+    - "clean educational worksheet layout"
