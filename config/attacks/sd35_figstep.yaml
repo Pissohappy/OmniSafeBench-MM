@@ -1,25 +1,13 @@
 name: "sd35_figstep"
 
 parameters:
-  stable_diffusion_path: "stable-diffusion-3.5-medium"
-  dtype: "float16"
-
-  image_width: 1024
-  image_height: 1024
-
+  # Keep FigStep generation settings aligned for fair comparison.
   font_path: "attacks/Arial Font/ARIAL.TTF"
-  font_size: 64
-
+  font_size: 70
+  wrap_width: 18
+  steps: 3
+  style_selection: "round_robin"
   styles:
-    - "default"
-    - "blueprint"
-    - "poster"
-  style_prompts:
-    default: "clean, readable list layout"
-    blueprint: "technical blueprint style, monochrome lines"
-    poster: "high-contrast poster composition"
-
-  seed: 42
-  per_case_seed_mode: "hash"
-
-  negative_prompt: "blurry, low quality, distorted text"
+    - "minimal monochrome technical diagram"
+    - "high-contrast infographic poster"
+    - "clean educational worksheet layout"
