@@ -20,7 +20,7 @@ response_generation:
     max_tokens: 512
     temperature: 0.0
   models:
-  - Qwen3-VL-30B-A3B-Instruct
+  - GLM-4.1V-9B-Thinking
 system:
   batch_size: 8
   log_file: logs/experiment_0210.log

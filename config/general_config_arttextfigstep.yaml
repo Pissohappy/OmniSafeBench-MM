@@ -16,19 +16,16 @@ experiment:
 response_generation:
   defenses:
   - None
-  model_kwargs:
-    max_tokens: 512
-    temperature: 0.0
   models:
-  - Qwen3-VL-30B-A3B-Instruct
+  - Kimi-VL-A3B-Instruct
 system:
   batch_size: 8
-  log_file: logs/experiment_0210.log
+  log_file: logs/experiment_arttextfigstep.log
   log_level: INFO
-  max_workers: 1
+  max_workers: 10
   output_dir: output/
 test_case_generation:
   attacks:
-  - cs_dj
+  - arttextfigstep
   input:
     behaviors_file: /mnt/disk1/szchen/VLMBenchmark/repo/OmniSafeBench-MM/dataset/data_full.json

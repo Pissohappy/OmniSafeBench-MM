@@ -6,6 +6,7 @@ plugins:
   attacks:
     figstep: [attacks.figstep.attack, FigStepAttack]
     sd35_figstep: [attacks.sd35_figstep.attack, SD35FigStepAttack]
+    arttextfigstep: [attacks.arttextfigstep.attack, ArttextFigStepAttack]
     cs_dj: [attacks.cs_dj.attack, CSDJAttack]
     hades: [attacks.hades.attack, HadesAttack]
     qr: [attacks.qr.attack, QRAttack]
