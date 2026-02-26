@@ -3,7 +3,8 @@
 # 定义硬编码列表
 # ATTACKS=("figstep" "hades" "jood" "mml" "siuo")
 # ATTACKS=("siuo" "mml" "jood")
-ATTACKS=("cs_dj")
+# ATTACKS=("cs_dj")
+ATTACKS=("sd35_figstep")
 
 # 定义模型列表
 MODELS=(

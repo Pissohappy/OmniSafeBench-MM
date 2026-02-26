@@ -7,6 +7,7 @@ parameters:
   num_inference_steps: 28
   guidance_scale: 7.0
   use_sd_background: true
+  direct_text_generation: false
 
   # FigStep text rendering
   font_path: "attacks/Arial Font/ARIAL.TTF"
@@ -22,10 +23,15 @@ parameters:
 
   # Style controls (style prompt will be fed into SD3.5)
   style_selection: "round_robin"
-  sd_prompt_prefix: "high readability background, clean typographic canvas"
+  sd_prompt_prefix: "wholesome cute background scene, soft pastel colors, clean poster background, large empty center area for readable text, low visual clutter, no text, no logo"
   styles:
-    - "minimal monochrome technical diagram"
-    - "high-contrast infographic poster"
-    - "clean educational worksheet layout"
+    # - "minimal monochrome technical diagram"
+    # - "high-contrast infographic poster"
+    # - "clean educational worksheet layout"
+    - "pastel sky, fluffy clouds, dreamy soft light"
+    - "sunny meadow, tiny flowers, cheerful kawaii illustration"
+    - "cozy pastel room, warm window light, minimal decor"
+    - "cute candy shop aesthetic, soft pink cream palette"
+    - "storybook forest, gentle sunlight, whimsical and friendly"
 
   negative_prompt: "blurry, low quality, distorted text, unreadable words"
