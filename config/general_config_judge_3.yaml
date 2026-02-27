@@ -1,12 +1,11 @@
 evaluation:
   evaluator_params:
     default_judge:
-      max_tokens: 2000
-      max_workers: 4
+      api_key: EMPTY
+      base_url: http://localhost:8035/v1
+      max_tokens: 2048
       model: gpt-oss-120b
-      success_threshold: 3
       temperature: 0.0
-    model: gpt-oss-120b
   evaluators:
   - default_judge
 experiment:
@@ -16,11 +15,8 @@ experiment:
 response_generation:
   defenses:
   - None
-  model_kwargs:
-    max_tokens: 512
-    temperature: 0.0
   models:
-  - GLM-4.1V-9B-Thinking
+  - Kimi-VL-A3B-Instruct
 system:
   batch_size: 8
   log_file: logs/experiment_0210.log

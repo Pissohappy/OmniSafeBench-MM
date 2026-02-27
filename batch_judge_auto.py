@@ -191,9 +191,11 @@ if __name__ == "__main__":
     #     "deepseek-vl2", "Qwen3-VL-30B-A3B-Instruct"
     # ]
 
-    ALL_MODELS = [
-        "gemma-3-27b-it", "deepseek-vl2", "GLM-4.1V-9B-Thinking", "Qwen3-VL-30B-A3B-Instruct", "Kimi-VL-A3B-Instruct"
-    ]
+    # ALL_MODELS = [
+    #     "gemma-3-27b-it", "deepseek-vl2", "GLM-4.1V-9B-Thinking", "Qwen3-VL-30B-A3B-Instruct", "Kimi-VL-A3B-Instruct"
+    # ]
+
+    ALL_MODELS = ["GLM-4.1V-9B-Thinking"]
 
     # 2. 【新增逻辑】在调用前进行路径检查，筛选出真实存在的文件
     MODELS_TO_CHECK = []

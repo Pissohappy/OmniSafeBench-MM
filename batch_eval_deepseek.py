@@ -202,6 +202,7 @@ if __name__ == "__main__":
         # "Qwen3-VL-8B-Instruct", 
         # "Kimi-VL-A3B-Instruct", 
         # "GLM-4.6V-Flash",
+        "GLM-4.1V-9B-Thinking"
         # "Step3-VL-10B", 
 
         # "gemma-3-27b-it",
@@ -215,7 +216,7 @@ if __name__ == "__main__":
         # "llava-v1.6-mistral-7b-hf"
 
         # "Youtu-VL-4B-Instruct", 不支持vllm
-        "deepseek-vl2",  #存在bug
+        # "deepseek-vl2",  
         # "Llama-4-Scout-17B-16E-Instruct", 需要TP=2两张卡
 
     ]

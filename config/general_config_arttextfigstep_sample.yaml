@@ -23,7 +23,7 @@ system:
   log_file: logs/experiment_arttextfigstep.log
   log_level: INFO
   max_workers: 10
-  output_dir: output/
+  output_dir: output_sample/
 test_case_generation:
   attacks:
   - arttextfigstep
