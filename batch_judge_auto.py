@@ -45,7 +45,18 @@ def send_email_notification(model_name, attack_name, status, details=""):
     except Exception as e:
         print(f"⚠️ 邮件发送失败: {e}")
 
-def run_judge_vllm_pipeline(attack_name, judge_model_name, base_port, gpu_id, target_models):
+def run_judge_vllm_pipeline(
+    attack_name,
+    judge_model_name,
+    base_port,
+    gpu_id,
+    target_models,
+    response_root=RESPONSE_ROOT,
+    base_gen_config=BASE_GEN_CONFIG,
+    base_mod_config=BASE_MOD_CONFIG,
+    models_root=MODELS_ROOT,
+    vllm_python_path=VLLM_PYTHON_PATH,
+):
     """
     judge_model_name: 作为裁判的模型名称 (如 'Llama-3-70B-Instruct')
     target_models: 需要被评测的响应模型列表
@@ -55,7 +66,7 @@ def run_judge_vllm_pipeline(attack_name, judge_model_name, base_port, gpu_id, ta
     os.makedirs(LOG_DIR, exist_ok=True)
 
     # 1. 准备 Judge 模型的服务
-    judge_model_path = os.path.join(MODELS_ROOT, judge_model_name)
+    judge_model_path = os.path.join(models_root, judge_model_name)
     vllm_log_file = os.path.join(LOG_DIR, f"judge_{judge_model_name}_vllm.log")
     
     # 定义临时配置
@@ -70,7 +81,7 @@ def run_judge_vllm_pipeline(attack_name, judge_model_name, base_port, gpu_id, ta
     tp_size = len(str(gpu_id).split(','))
 
     vllm_cmd = (
-        f"{VLLM_PYTHON_PATH} -m vllm.entrypoints.openai.api_server "
+        f"{vllm_python_path} -m vllm.entrypoints.openai.api_server "
         f"--model {judge_model_path} --served-model-name {judge_model_name} "
         f"--port {base_port} --trust-remote-code --dtype bfloat16 "
         f"--tensor-parallel-size {tp_size} --gpu-memory-utilization 0.8 "
@@ -101,7 +112,7 @@ def run_judge_vllm_pipeline(attack_name, judge_model_name, base_port, gpu_id, ta
     # --- 第二步：遍历目标模型进行评测 ---
     try:
         for model in target_models:
-            response_file = os.path.join(RESPONSE_ROOT, f"attack_{attack_name}_model_{model}.jsonl")
+            response_file = os.path.join(response_root, f"attack_{attack_name}_model_{model}.jsonl")
             if not os.path.exists(response_file):
                 print(f"⚠️ 跳过：找不到响应文件 {response_file}")
                 continue
@@ -109,7 +120,7 @@ def run_judge_vllm_pipeline(attack_name, judge_model_name, base_port, gpu_id, ta
             print(f"\n⚖️ 正在评测模型响应: {model}")
 
             # 定制临时 model_config (指向本地 Judge 端口)
-            with open(BASE_MOD_CONFIG, 'r') as f:
+            with open(base_mod_config, 'r') as f:
                 m_cfg = yaml.safe_load(f)
             
             new_url = f"http://localhost:{base_port}/v1"
@@ -125,7 +136,7 @@ def run_judge_vllm_pipeline(attack_name, judge_model_name, base_port, gpu_id, ta
                 yaml.safe_dump(m_cfg, f)
 
             # 定制临时 general_config
-            with open(BASE_GEN_CONFIG, 'r') as f:
+            with open(base_gen_config, 'r') as f:
                 g_cfg = yaml.safe_load(f)
             
             # g_cfg['evaluation'] = {
@@ -180,6 +191,17 @@ if __name__ == "__main__":
     parser.add_argument("--judge_model", type=str, required=True, help="用作裁判的模型文件夹名")
     parser.add_argument("--port", type=int, default=8001)
     parser.add_argument("--gpu", type=str, default="0")
+    parser.add_argument(
+        "--models",
+        type=str,
+        default="",
+        help="逗号分隔的待评测模型列表；不传则使用脚本内默认列表",
+    )
+    parser.add_argument("--response-root", type=str, default=RESPONSE_ROOT)
+    parser.add_argument("--base-gen-config", type=str, default=BASE_GEN_CONFIG)
+    parser.add_argument("--base-mod-config", type=str, default=BASE_MOD_CONFIG)
+    parser.add_argument("--models-root", type=str, default=MODELS_ROOT)
+    parser.add_argument("--vllm-python", type=str, default=VLLM_PYTHON_PATH)
     args = parser.parse_args()
 
     # 待评测的列表
@@ -197,11 +219,14 @@ if __name__ == "__main__":
 
     ALL_MODELS = ["GLM-4.1V-9B-Thinking"]
 
+    if args.models.strip():
+        ALL_MODELS = [m.strip() for m in args.models.split(",") if m.strip()]
+
     # 2. 【新增逻辑】在调用前进行路径检查，筛选出真实存在的文件
     MODELS_TO_CHECK = []
     for model in ALL_MODELS:
         # 拼接路径，检查该 attack + model 的组合是否存在
-        response_file = os.path.join(RESPONSE_ROOT, f"attack_{args.attack}_model_{model}.jsonl")
+        response_file = os.path.join(args.response_root, f"attack_{args.attack}_model_{model}.jsonl")
         if os.path.exists(response_file):
             MODELS_TO_CHECK.append(model)
         else:
@@ -211,7 +236,18 @@ if __name__ == "__main__":
     # 3. 如果筛选后的列表不为空，则启动 Judge 流程
     if MODELS_TO_CHECK:
         print(f"✅ 找到以下有效模型待判定 (Attack: {args.attack}): {MODELS_TO_CHECK}")
-        run_judge_vllm_pipeline(args.attack, args.judge_model, args.port, args.gpu, MODELS_TO_CHECK)
+        run_judge_vllm_pipeline(
+            args.attack,
+            args.judge_model,
+            args.port,
+            args.gpu,
+            MODELS_TO_CHECK,
+            response_root=args.response_root,
+            base_gen_config=args.base_gen_config,
+            base_mod_config=args.base_mod_config,
+            models_root=args.models_root,
+            vllm_python_path=args.vllm_python,
+        )
     else:
         print(f"❌ [Skipping] 攻击方式 {args.attack} 下没有找到任何可用的响应文件，脚本退出。")
 
