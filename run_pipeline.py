@@ -189,7 +189,17 @@ def main():
 
         # Override output directory
         if args.output_dir:
+            if not hasattr(config, "system") or config.system is None:
+                config.system = {}
+            config.system["output_dir"] = args.output_dir
+
+            # Backward compatibility field (prefer config.system["output_dir"])
             config.output_dir = args.output_dir
+
+            logger.info(
+                "Using output directory (effective): %s",
+                config.system.get("output_dir", config.output_dir),
+            )
 
         # Validate configuration
         if not validate_config(config):
