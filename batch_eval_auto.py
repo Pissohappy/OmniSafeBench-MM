@@ -63,7 +63,18 @@ def send_email_notification(model_name, attack_name, status, details=""):
     except Exception as e:
         print(f"⚠️ 邮件发送失败: {e}")
 
-def run_response_pipeline(attack_name, base_port, gpu_id, model_list):
+def run_response_pipeline(
+    attack_name,
+    base_port,
+    gpu_id,
+    model_list,
+    test_cases_file,
+    base_gen_config=BASE_GEN_CONFIG,
+    base_mod_config=BASE_MOD_CONFIG,
+    models_root=MODELS_ROOT,
+    vllm_python_path=VLLM_PYTHON_PATH,
+    kimi_python_path=KIMI_PYTHON_PATH,
+):
     # 1. 准备环境变量和目录
     env = os.environ.copy()
     env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
@@ -76,20 +87,20 @@ def run_response_pipeline(attack_name, base_port, gpu_id, model_list):
     tmp_gen_path = os.path.join("config", tmp_gen_filename)
 
     for model in model_list:
-        model_path = os.path.join(MODELS_ROOT, model)
+        model_path = os.path.join(models_root, model)
         vllm_log_file = os.path.join(LOG_DIR, f"{attack_name}_{model}_vllm.log")
 
         engine_version = MODEL_ENGINE_MAP.get(model, MODEL_ENGINE_MAP["default"])
         env["VLLM_USE_V1"] = engine_version
 
-        current_python = KIMI_PYTHON_PATH if model=="Kimi-VL-A3B-Instruct" else VLLM_PYTHON_PATH
+        current_python = kimi_python_path if model == "Kimi-VL-A3B-Instruct" else vllm_python_path
         
         print(f"\n" + "█"*60)
         print(f"🚀 正在启动: {model} | 端口: {base_port} | GPU: {gpu_id} | VLLM_USE_V1: {engine_version}")
         print(f"█" + "━"*59)
 
         # --- 第一步：定制 model_config (修改端口) ---
-        with open(BASE_MOD_CONFIG, 'r') as f:
+        with open(base_mod_config, 'r') as f:
             m_cfg = yaml.safe_load(f)
         
         new_url = f"http://localhost:{base_port}/v1"
@@ -103,7 +114,7 @@ def run_response_pipeline(attack_name, base_port, gpu_id, model_list):
             yaml.safe_dump(m_cfg, f)
 
         # --- 第二步：定制 general_config (设置生成长度限制) ---
-        with open(BASE_GEN_CONFIG, 'r') as f:
+        with open(base_gen_config, 'r') as f:
             g_cfg = yaml.safe_load(f)
         
         g_cfg['response_generation']['models'] = [model]
@@ -164,7 +175,7 @@ def run_response_pipeline(attack_name, base_port, gpu_id, model_list):
                     "--config", tmp_gen_path,
                     "--model-config", tmp_mod_filename,
                     "--stage", "response_generation",
-                    "--test-cases-file", f"output/test_cases/{attack_name}/test_cases.jsonl"
+                    "--test-cases-file", test_cases_file
                 ], check=True, env=env)
                 
                 duration = round((time.time() - start_time) / 60, 2)
@@ -195,6 +206,23 @@ if __name__ == "__main__":
     parser.add_argument("--attack", type=str, default="figstep", help="攻击名称")
     parser.add_argument("--port", type=int, required=True, help="起始端口号")
     parser.add_argument("--gpu", type=str, required=True, help="指定的 GPU ID (如 0 或 0,1)")
+    parser.add_argument(
+        "--models",
+        type=str,
+        default="",
+        help="逗号分隔的模型列表；不传则使用脚本内默认列表",
+    )
+    parser.add_argument(
+        "--test-cases-file",
+        type=str,
+        default="",
+        help="测试用例文件路径；默认 output/test_cases/<attack>/test_cases.jsonl",
+    )
+    parser.add_argument("--base-gen-config", type=str, default=BASE_GEN_CONFIG)
+    parser.add_argument("--base-mod-config", type=str, default=BASE_MOD_CONFIG)
+    parser.add_argument("--models-root", type=str, default=MODELS_ROOT)
+    parser.add_argument("--vllm-python", type=str, default=VLLM_PYTHON_PATH)
+    parser.add_argument("--kimi-python", type=str, default=KIMI_PYTHON_PATH)
     args = parser.parse_args()
 
     # 你要跑的模型列表
@@ -221,4 +249,20 @@ if __name__ == "__main__":
 
     ]
 
-    run_response_pipeline(args.attack, args.port, args.gpu, MODELS_TO_RUN)
+    if args.models.strip():
+        MODELS_TO_RUN = [m.strip() for m in args.models.split(",") if m.strip()]
+
+    test_cases_file = args.test_cases_file or f"output/test_cases/{args.attack}/test_cases.jsonl"
+
+    run_response_pipeline(
+        args.attack,
+        args.port,
+        args.gpu,
+        MODELS_TO_RUN,
+        test_cases_file,
+        base_gen_config=args.base_gen_config,
+        base_mod_config=args.base_mod_config,
+        models_root=args.models_root,
+        vllm_python_path=args.vllm_python,
+        kimi_python_path=args.kimi_python,
+    )
