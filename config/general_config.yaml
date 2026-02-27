@@ -25,6 +25,8 @@ system:
   log_level: INFO
   max_workers: 1
   output_dir: output/
+  # Optional but strongly recommended for quick experiments to isolate outputs and resume states
+  # experiment_id: 20260227_attackX_v2
 test_case_generation:
   attacks:
   # - figstep

@@ -27,8 +27,7 @@ class BasePipeline(ABC):
         self.config = config
         self.logger = self._setup_logger()
         if stage_name:
-            stage_dir = self._get_stage_dir_name(stage_name)
-            self.output_dir = Path(config.system["output_dir"]) / stage_dir
+            self.output_dir = self._get_stage_output_dir(stage_name)
             self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def _get_stage_dir_name(self, stage_name: str) -> str:
@@ -51,8 +50,7 @@ class BasePipeline(ABC):
             Generated filename
         """
         if stage_name:
-            stage_dir = self._get_stage_dir_name(stage_name)
-            output_dir = Path(self.config.system["output_dir"]) / stage_dir
+            output_dir = self._get_stage_output_dir(stage_name)
             output_dir.mkdir(parents=True, exist_ok=True)
 
         if stage_name == "test_case_generation":
@@ -129,6 +127,16 @@ class BasePipeline(ABC):
                 raise
         else:
             raise
+
+    def _get_stage_output_dir(self, stage_name: str) -> Path:
+        """Return stage output directory with optional experiment isolation."""
+        stage_dir = self._get_stage_dir_name(stage_name)
+        output_root = Path(self.config.system["output_dir"])
+        experiment_id = self.config.system.get("experiment_id")
+
+        if experiment_id:
+            return output_root / experiment_id / stage_dir
+        return output_root / stage_dir
 
     def _setup_logger(self) -> logging.Logger:
         """Setup logger"""
