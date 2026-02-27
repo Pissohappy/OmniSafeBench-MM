@@ -1,11 +1,12 @@
 evaluation:
   evaluator_params:
     default_judge:
-      api_key: EMPTY
-      base_url: http://localhost:8080/v1
-      max_tokens: 2048
+      max_tokens: 2000
+      max_workers: 4
       model: gpt-oss-120b
+      success_threshold: 3
       temperature: 0.0
+    model: gpt-oss-120b
   evaluators:
   - default_judge
 experiment:
@@ -19,12 +20,12 @@ response_generation:
   - Kimi-VL-A3B-Instruct
 system:
   batch_size: 8
-  log_file: logs/experiment_figstep.log
+  log_file: logs/experiment_arttextfigstep.log
   log_level: INFO
   max_workers: 10
   output_dir: output_sample/
 test_case_generation:
   attacks:
-  - figstep
+  - sd35_figstep
   input:
     behaviors_file: /mnt/disk1/szchen/VLMBenchmark/repo/OmniSafeBench-MM/dataset/data_sample50.json

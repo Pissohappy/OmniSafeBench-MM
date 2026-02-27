@@ -81,7 +81,7 @@ providers:
         temperature: 0.0
   vllm:
     api_key: dummy
-    base_url: http://localhost:8035/v1
+    base_url: http://localhost:8080/v1
     models:
       GLM-4.1V-9B-Thinking:
         max_tokens: 2000
@@ -173,7 +173,7 @@ providers:
         model_name: gemma-3-4b-it
         temperature: 0.0
       gpt-oss-120b:
-        base_url: http://localhost:8035/v1
+        base_url: http://localhost:8080/v1
       guardreasoner_vl:
         base_url: http://localhost:8021/v1
         max_tokens: 10000

@@ -2,7 +2,7 @@ evaluation:
   evaluator_params:
     default_judge:
       max_tokens: 2000
-      max_workers: 4
+      max_workers: 2
       model: gpt-oss-120b
       success_threshold: 3
       temperature: 0.0
@@ -16,19 +16,19 @@ experiment:
 response_generation:
   defenses:
   - None
-  model_kwargs:
-    max_tokens: 512
-    temperature: 0.0
   models:
   - Kimi-VL-A3B-Instruct
 system:
   batch_size: 8
-  log_file: logs/experiment_arttextfigstep.log
+  log_file: logs/sample50_quick.log
   log_level: INFO
-  max_workers: 10
-  output_dir: output_sample/
+  max_workers: 1
+  # 快速验证默认输出目录（可配合 experiment_id/run_id 避免覆盖历史结果）
+  output_dir: output_runs/sample50_quick/
+  # 建议每次运行修改 run_id（或 experiment_id）以隔离输出，例如: sample50_quick_20260227_1
+  experiment_id: sample50_quick_run_id
 test_case_generation:
   attacks:
-  - arttextfigstep
+  - cs_dj
   input:
-    behaviors_file: /mnt/disk1/szchen/VLMBenchmark/repo/OmniSafeBench-MM/dataset/data_sample50.json
+    behaviors_file: dataset/data_sample50.json

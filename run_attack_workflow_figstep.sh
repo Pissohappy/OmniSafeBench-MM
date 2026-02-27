@@ -7,22 +7,27 @@ set -euo pipefail
 # 2) 批量拉起 vLLM，逐模型执行 response_generation
 # 3) （可选）拉起 judge 模型，对所有已生成响应做 evaluation
 
-ATTACK="arttextfigstep"
-GPU="1"
-EVAL_PORT=8050
-JUDGE_PORT=8060
+ATTACK="figstep"
+GPU="3"
+EVAL_PORT=8070
+JUDGE_PORT=8080
 JUDGE_MODEL="gpt-oss-120b"
 # "gemma-3-27b-it", "deepseek-vl2", "GLM-4.1V-9B-Thinking", "Qwen3-VL-30B-A3B-Instruct", "Kimi-VL-A3B-Instruct"
 MODELS="Kimi-VL-A3B-Instruct,deepseek-vl2,Qwen3-VL-30B-A3B-Instruct,GLM-4.1V-9B-Thinking,gemma-3-27b-it"
 
 # 使用 sample50 的推荐配置（你可替换）
-GENERAL_CONFIG="config/general_config_arttextfigstep_sample.yaml"
+GENERAL_CONFIG="config/general_config_${ATTACK}_sample.yaml"
 MODEL_CONFIG="config/model_config.yaml"
-TEST_CASES_FILE="output_sample/test_cases/arttextfigstep/test_cases.jsonl"
+TEST_CASES_FILE="output_sample/test_cases/${ATTACK}/test_cases.jsonl"
 
 # 可选：把 judge 结果和 response 分离到非默认目录时可以改这个
 # 例如 output_runs/exp_20260227/responses/None
-# RESPONSE_ROOT="output_runs/exp_20260227_figstep/responses/None"
+RESPONSE_ROOT="output_sample/responses/None"
+
+# 三个阶段可分离设计，默认都要跑一遍
+SKIP_GENERATE=0
+SKIP_RESPONSE=0
+SKIP_JUDGE=0
 
 usage() {
   cat <<USAGE
@@ -44,8 +49,7 @@ Options:
 USAGE
 }
 
-SKIP_GENERATE=0
-SKIP_JUDGE=0
+
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -89,15 +93,19 @@ else
   echo "=== Step 1: Skip test case generation ==="
 fi
 
-echo "=== Step 2: Batch response generation across models ==="
-python batch_eval_auto.py \
-  --attack "${ATTACK}" \
-  --port "${EVAL_PORT}" \
-  --gpu "${GPU}" \
-  --models "${MODELS}" \
-  --test-cases-file "${TEST_CASES_FILE}" \
-  --base-gen-config "${GENERAL_CONFIG}" \
-  --base-mod-config "${MODEL_CONFIG}"
+if [[ ${SKIP_RESPONSE} -eq 0 ]]; then
+  echo "=== Step 2: Batch response generation across models ==="
+  python batch_eval_auto.py \
+    --attack "${ATTACK}" \
+    --port "${EVAL_PORT}" \
+    --gpu "${GPU}" \
+    --models "${MODELS}" \
+    --test-cases-file "${TEST_CASES_FILE}" \
+    --base-gen-config "${GENERAL_CONFIG}" \
+    --base-mod-config "${MODEL_CONFIG}"
+else
+  echo "=== Step 2: Skip response generation ==="
+fi
 
 if [[ ${SKIP_JUDGE} -eq 0 ]]; then
   if [[ -z "${JUDGE_MODEL}" ]]; then
