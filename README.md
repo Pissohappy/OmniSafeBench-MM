@@ -58,6 +58,43 @@ A one-stop multimodal jailbreak/defense evaluation framework for beginners, cove
 4. **Run the full pipeline** (generate test cases → responses → evaluation):
    - `python run_pipeline.py --config config/general_config.yaml --full`
 
+### Quick verification flow (won't overwrite historical outputs)
+
+Use `config/general_config_sample50_quick.yaml` for a minimum runnable combo (1 attack + 1 model + 1 defense):
+- `test_case_generation.attacks = [cs_dj]`
+- `response_generation.models = [Kimi-VL-A3B-Instruct]`
+- `response_generation.defenses = [None]`
+- `test_case_generation.input.behaviors_file = dataset/data_sample50.json`
+
+Before running, update `system.experiment_id` (or your own `run_id`) in the config, e.g. `sample50_quick_20260227_1`, to isolate outputs under `output_runs/sample50_quick/<experiment_id>/...`.
+
+Stage-by-stage commands:
+
+```bash
+# Stage 1: generate test cases
+python run_pipeline.py --config config/general_config_sample50_quick.yaml --stage test_case_generation
+
+# Stage 2: generate model responses (option A: auto use stage-1 output)
+python run_pipeline.py --config config/general_config_sample50_quick.yaml --stage response_generation
+
+# Stage 2: option B (explicit file path, useful for reruns)
+python run_pipeline.py --config config/general_config_sample50_quick.yaml --stage response_generation \
+  --test-cases-file output_runs/sample50_quick/<experiment_id>/test_cases/cs_dj/test_cases.jsonl
+
+# Stage 3: run evaluation (option A: auto use stage-2 output)
+python run_pipeline.py --config config/general_config_sample50_quick.yaml --stage evaluation
+
+# Stage 3: option B (explicit response file path)
+python run_pipeline.py --config config/general_config_sample50_quick.yaml --stage evaluation \
+  --input-file output_runs/sample50_quick/<experiment_id>/responses/None/attack_cs_dj_model_Kimi-VL-A3B-Instruct.jsonl
+```
+
+Or run all stages once:
+
+```bash
+python run_pipeline.py --config config/general_config_sample50_quick.yaml --full
+```
+
 ## ⚡ SD35-FigStep quick start
 
 Use `config/general_config_figstep_vs_sd35.yaml` as a controlled comparison config:
