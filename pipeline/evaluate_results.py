@@ -55,25 +55,29 @@ class ResultEvaluator(BasePipeline):
                 return []
 
             files = []
-            responses_dir = Path(self.config.system["output_dir"]) / "responses"
-
             for attack_name in attack_names:
                 for model_name in model_names:
                     for defense_name in defense_names:
-                        defense_dir = responses_dir / defense_name
+                        try:
+                            _, response_file = self._generate_filename(
+                                "response_generation",
+                                attack_name=attack_name,
+                                model_name=model_name,
+                                defense_name=defense_name,
+                            )
+                        except Exception as e:
+                            self.logger.warning(
+                                f"Failed to generate response file path (attack={attack_name}, model={model_name}, defense={defense_name}): {e}"
+                            )
+                            continue
+
                         # Prefer JSONL outputs; fall back to legacy JSON list if present
-                        response_file_jsonl = (
-                            defense_dir
-                            / f"attack_{attack_name}_model_{model_name}.jsonl"
-                        )
-                        response_file_json = (
-                            defense_dir
-                            / f"attack_{attack_name}_model_{model_name}.json"
-                        )
-                        if response_file_jsonl.exists():
-                            files.append(response_file_jsonl)
-                        elif response_file_json.exists():
-                            files.append(response_file_json)
+                        if response_file.exists():
+                            files.append(response_file)
+                        else:
+                            legacy_response_file = response_file.with_suffix(".json")
+                            if legacy_response_file.exists():
+                                files.append(legacy_response_file)
             return files
 
         # Use unified data loading method
@@ -458,7 +462,7 @@ class ResultEvaluator(BasePipeline):
 
         # Since evaluator_name is now part of filename, we load by scanning evaluation directory
         # for matching patterns instead of guessing evaluator names here.
-        evaluations_dir = Path(self.config.system["output_dir"]) / "evaluations"
+        evaluations_dir = self._get_stage_output_dir("evaluation")
         if not evaluations_dir.exists():
             self.logger.info("Evaluations directory does not exist, nothing to load")
             return []

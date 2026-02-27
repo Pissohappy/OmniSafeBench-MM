@@ -192,6 +192,7 @@ Depending on the attack/defense methods used, the following additional configura
 
 - **Generate test cases only**:
   - `python run_pipeline.py --config config/general_config.yaml --stage test_case_generation`
+  - Recommended for quick experiments: set `system.experiment_id` (e.g., `20260227_attackX_v2`) so outputs are isolated under `output/<experiment_id>/...` and resume detection will not mix runs.
 - **Generate model responses from specified test_case JSON**:
   - `python run_pipeline.py --config config/general_config.yaml --stage response_generation --test-cases-file /abs/path/to/test_cases.jsonl`
   - Equivalent: Fill in the file path in `config.response_generation.input_test_cases`.
@@ -205,7 +206,7 @@ Depending on the attack/defense methods used, the following additional configura
 - These white-box attack methods use MiniGPT-4 as the target model when generating test cases, but **do not automatically generate responses**.
 - After generating test cases, you need to **run MiniGPT-4 separately** to process the attack-generated test case data and generate responses.
 - Specific steps:
-  1. First run the test case generation stage to obtain the attack-generated test case files (located at `output/test_cases/<attack>/<target_model>/...jsonl`)
+  1. First run the test case generation stage to obtain the attack-generated test case files (located at `output/<experiment_id>/test_cases/<attack>/<target_model>/...jsonl` (or `output/test_cases/...` if `experiment_id` is not set))
   2. Use the MiniGPT-4 model separately to process these test cases and generate responses (you need to write your own script or use the framework's response_generation stage, but ensure the MiniGPT-4 model is properly configured)
   3. After saving the generated responses as a JSON file, run the evaluation stage
 
@@ -217,6 +218,7 @@ Depending on the attack/defense methods used, the following additional configura
   - `response_generation.defenses`: Select defenses (corresponding to `config/defenses/*.yaml`), can fill in `"None"`.
   - `evaluation.evaluators`: Select evaluators (default `default_judge`).
   - `system.output_dir`: Unified output directory.
+  - `system.experiment_id` (optional): experiment isolation identifier. When set, stage outputs become `output_dir/<experiment_id>/<stage_dir>/...`; strongly recommended for quick trial runs.
 - **Model configuration**: `config/model_config.yaml`
   - Grouped by provider (e.g., `openai`, `qwen`, `google`, etc.), define `model_name`, `api_key`, `base_url`, etc. under `providers.<name>.models`.
 - **Attack/Defense configuration**: `config/attacks/*.yaml`, `config/defenses/*.yaml`
