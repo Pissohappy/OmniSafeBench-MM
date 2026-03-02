@@ -9,7 +9,7 @@ from core.base_classes import BaseEvaluator
 from core.data_formats import ModelResponse, EvaluationResult
 
 # Import original judge_utils
-from .judge_utils import get_scores
+from .judge_utils import get_scores, select_judge_input_text
 
 
 class DefaultJudge(BaseEvaluator):
@@ -63,7 +63,7 @@ class DefaultJudge(BaseEvaluator):
             # Get original prompt from model_response metadata
             response_metadata = model_response.metadata or {}
             original_prompt = response_metadata.get("original_prompt", "")
-            response_text = model_response.model_response
+            response_text, judge_input_source = select_judge_input_text(model_response)
 
             self.logger.debug(
                 f"Evaluating response - Test Case ID: {model_response.test_case_id}"
@@ -120,6 +120,7 @@ class DefaultJudge(BaseEvaluator):
                 "alignment_reason": alignment_reason,
                 "detail_reason": detail_reason,
                 "final_reason": final_reason,
+                "judge_input_source": judge_input_source,
             }
 
             judge_score_int = (
