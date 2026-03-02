@@ -61,7 +61,8 @@ class DefaultJudge(BaseEvaluator):
         """
         try:
             # Get original prompt from model_response metadata
-            original_prompt = model_response.metadata.get("original_prompt", "")
+            response_metadata = model_response.metadata or {}
+            original_prompt = response_metadata.get("original_prompt", "")
             response_text = model_response.model_response
 
             self.logger.debug(
@@ -126,7 +127,7 @@ class DefaultJudge(BaseEvaluator):
             )
 
             # Merge all metadata
-            combined_metadata = {**metadata, **model_response.metadata}
+            combined_metadata = {**metadata, **response_metadata}
 
             evaluation_result = EvaluationResult(
                 test_case_id=model_response.test_case_id,
