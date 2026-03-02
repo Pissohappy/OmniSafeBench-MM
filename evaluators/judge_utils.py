@@ -1,6 +1,16 @@
 import re
 
 
+def select_judge_input_text(model_response):
+    """Select response text used by judge and return both text and source."""
+
+    final_answer = (model_response.final_answer or "").strip()
+    if final_answer:
+        return final_answer, "final_answer"
+
+    return model_response.model_response, "model_response"
+
+
 def build_evaluation_messages(template, original_prompt, response):
     """Build evaluation message list
 
