@@ -110,8 +110,24 @@ class ResultEvaluator(BasePipeline):
                     evaluator_name, evaluator_config
                 )
 
+            # Optionally judge on parsed final answer (default true)
+            judge_use_final_answer = self.config.response_generation.get(
+                "judge_use_final_answer", True
+            )
+            response_for_judge = model_response
+            if judge_use_final_answer and model_response.final_answer:
+                response_for_judge = ModelResponse(
+                    test_case_id=model_response.test_case_id,
+                    model_response=model_response.final_answer,
+                    model_name=model_response.model_name,
+                    metadata=model_response.metadata,
+                    reasoning_trace=model_response.reasoning_trace,
+                    final_answer=model_response.final_answer,
+                    response_parse_status=model_response.response_parse_status,
+                )
+
             # Execute evaluation
-            evaluation_result = evaluator.evaluate_response(model_response)
+            evaluation_result = evaluator.evaluate_response(response_for_judge)
 
             # ---- Enrich result with contextual fields to make it self-contained ----
             # NOTE: test_case_id is NOT globally unique across attacks/models/defenses.
@@ -136,6 +152,8 @@ class ResultEvaluator(BasePipeline):
             if evaluation_result.metadata is None:
                 evaluation_result.metadata = {}
             evaluation_result.metadata["evaluator_name"] = evaluator_name
+            evaluation_result.metadata["judge_use_final_answer"] = judge_use_final_answer
+            evaluation_result.metadata["response_parse_status"] = model_response.response_parse_status
 
             self.logger.debug(
                 f"Successfully evaluated response {model_response.test_case_id}"
