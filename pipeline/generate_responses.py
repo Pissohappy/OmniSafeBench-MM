@@ -192,6 +192,8 @@ class ResponseGenerator(BasePipeline):
             # Generate original response
             model_response = model.generate_response(defended_test_case)
 
+            model_response.metadata = model_response.metadata or {}
+
             # Apply post-processing defense (if supported)
             if defense_instance and hasattr(defense_instance, "post_process_response"):
                 try:
@@ -361,6 +363,9 @@ class ResponseGenerator(BasePipeline):
                             self.logger.error(
                                 f"Failed to generate response (test case: {test_case.test_case_id}): {e}"
                             )
+
+            for response in responses:
+                response.metadata = response.metadata or {}
 
             # Apply post-processing defense (if supported)
             if defense_instance and hasattr(defense_instance, "post_process_response"):

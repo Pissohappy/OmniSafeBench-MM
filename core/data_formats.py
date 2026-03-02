@@ -65,6 +65,13 @@ class ModelResponse:
     model_response: str
     model_name: str
     metadata: Dict[str, Any] = field(default_factory=dict)
+    reasoning_trace: Optional[str] = None
+    final_answer: Optional[str] = None
+    response_parse_status: Optional[str] = None
+
+    def __post_init__(self):
+        if self.metadata is None:
+            self.metadata = {}
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary format"""
@@ -76,12 +83,24 @@ class ModelResponse:
             "model_response": self.model_response,
             "model_name": self.model_name,
             "metadata": metadata_clean,
+            "reasoning_trace": self.reasoning_trace,
+            "final_answer": self.final_answer,
+            "response_parse_status": self.response_parse_status,
         }
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ModelResponse":
         """Create instance from dictionary"""
-        return cls(**data)
+        data_copy = data.copy()
+
+        if "metadata" not in data_copy or data_copy["metadata"] is None:
+            data_copy["metadata"] = {}
+
+        data_copy.setdefault("reasoning_trace", None)
+        data_copy.setdefault("final_answer", None)
+        data_copy.setdefault("response_parse_status", None)
+
+        return cls(**data_copy)
 
 
 @dataclass
