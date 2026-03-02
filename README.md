@@ -263,6 +263,13 @@ Depending on the attack/defense methods used, the following additional configura
 - **Directly specify input files**:
   - Response stage: `response_generation.input_test_cases: /abs/path/to/test_cases.jsonl`
   - Evaluation stage: `evaluation.input_responses: /abs/path/to/responses.jsonl`
+- **Reasoning split related options** (`response_generation`):
+  - `enable_reasoning_split` (bool): enable parsing `<think>...</think>` from model output.
+  - `reasoning_split_strategy` (`auto|tag_only|off`):
+    - `auto` (recommended for thinking models): parse when tags exist, fallback to raw response when no tags.
+    - `tag_only`: only tag-based split, still fallback when model emits no tags.
+    - `off`: disable split and keep legacy behavior.
+  - `judge_use_final_answer` (bool, default `true`): evaluation uses `final_answer` when available; otherwise automatically falls back to `model_response`.
 
 ## 📊 Input/Output Formats for Each Stage
 
@@ -334,6 +341,9 @@ Depending on the attack/defense methods used, the following additional configura
 - `model_response`: The model's response to the jailbreak prompt
 - `model_name`: Name of the model that generated the response
 - `metadata`: Contains defense method, attack method, and related information
+- `reasoning_trace` / `final_answer` / `response_parse_status`: optional parsed fields for thinking-model outputs.
+  - For models without `<think>` tags, pipeline writes `response_parse_status: fallback_no_tag` and keeps `final_answer = model_response`.
+  - For legacy JSONL rows that only contain `model_response`, loading/evaluation remains compatible (evaluation auto-fallbacks to `model_response`).
 
 ### Stage 3: Evaluation
 
@@ -451,3 +461,5 @@ When adding new components, please:
 - **API key reading?**
   Fill directly in `config/model_config.yaml`;
 - **Pre-development check**: Ensure new components are mapped in `config/plugins.yaml` and have corresponding configuration files.
+- **How to backfill historical response files with reasoning fields?**
+  Use `python scripts/backfill_reasoning_fields.py /abs/path/to/responses.jsonl` (non-destructive; only fills missing fields).

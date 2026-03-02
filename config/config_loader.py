@@ -462,6 +462,26 @@ def validate_config(config: PipelineConfig) -> bool:
         print("Error: Models are not set")
         return False
 
+    # Validate reasoning split options
+    enable_reasoning_split = response_cfg.get("enable_reasoning_split", False)
+    if not isinstance(enable_reasoning_split, bool):
+        print("Error: response_generation.enable_reasoning_split must be a boolean")
+        return False
+
+    allowed_split_strategies = {"auto", "tag_only", "off"}
+    reasoning_split_strategy = response_cfg.get("reasoning_split_strategy", "auto")
+    if reasoning_split_strategy not in allowed_split_strategies:
+        print(
+            "Error: response_generation.reasoning_split_strategy must be one of "
+            f"{sorted(allowed_split_strategies)}"
+        )
+        return False
+
+    judge_use_final_answer = response_cfg.get("judge_use_final_answer", True)
+    if not isinstance(judge_use_final_answer, bool):
+        print("Error: response_generation.judge_use_final_answer must be a boolean")
+        return False
+
     # Check if model configurations are complete
     model_params = response_cfg.get("model_params", {})
     for model_name in response_cfg.get("models", []):

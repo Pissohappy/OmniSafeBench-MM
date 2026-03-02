@@ -4,6 +4,7 @@ Supports pre-processing and post-processing defense methods
 """
 
 import json
+import re
 from typing import List, Dict, Any, Tuple
 from pathlib import Path
 
@@ -22,6 +23,51 @@ class ResponseGenerator(BasePipeline):
     def __init__(self, config: PipelineConfig):
         super().__init__(config, stage_name="response_generation")
         self.response_configs = config.response_generation
+        self.enable_reasoning_split = self.response_configs.get(
+            "enable_reasoning_split", False
+        )
+        self.reasoning_split_strategy = self.response_configs.get(
+            "reasoning_split_strategy", "auto"
+        )
+
+    def _extract_reasoning_and_answer(self, model_response_text: str) -> Tuple[Any, str, str]:
+        """Extract reasoning trace and final answer from model output.
+
+        Returns:
+            (reasoning_trace, final_answer, parse_status)
+        """
+        if not self.enable_reasoning_split:
+            return None, model_response_text, "disabled"
+
+        strategy = self.reasoning_split_strategy
+        if strategy == "off":
+            return None, model_response_text, "strategy_off"
+
+        pattern = re.compile(r"<think>(.*?)</think>", flags=re.IGNORECASE | re.DOTALL)
+        match = pattern.search(model_response_text or "")
+
+        if match:
+            reasoning_trace = (match.group(1) or "").strip() or None
+            final_answer = pattern.sub("", model_response_text, count=1).strip()
+            if not final_answer:
+                final_answer = model_response_text
+            return reasoning_trace, final_answer, "split_by_tag"
+
+        # Both `auto` and `tag_only` gracefully fall back when no tags are emitted.
+        if strategy in {"auto", "tag_only"}:
+            return None, model_response_text, "fallback_no_tag"
+
+        return None, model_response_text, "fallback_unknown_strategy"
+
+    def _apply_reasoning_split(self, response: ModelResponse) -> ModelResponse:
+        """Attach reasoning/final answer fields to response based on config."""
+        reasoning_trace, final_answer, parse_status = self._extract_reasoning_and_answer(
+            response.model_response
+        )
+        response.reasoning_trace = reasoning_trace
+        response.final_answer = final_answer
+        response.response_parse_status = parse_status
+        return response
 
     def load_test_cases(self, attack_names: List[str] = None) -> List[TestCase]:
         """Load test cases
@@ -152,6 +198,7 @@ class ResponseGenerator(BasePipeline):
                     model_name=model_name,
                     metadata=metadata,
                 )
+                response = self._apply_reasoning_split(response)
 
                 # Clean up defense instance
                 self._cleanup_defense_instance(defense_instance)
@@ -178,6 +225,7 @@ class ResponseGenerator(BasePipeline):
                     model_name=model_name,
                     metadata=metadata,
                 )
+                response = self._apply_reasoning_split(response)
 
                 # Clean up defense instance
                 self._cleanup_defense_instance(defense_instance)
@@ -221,6 +269,8 @@ class ResponseGenerator(BasePipeline):
             self.logger.debug(
                 f"Successfully generated response for test case {test_case.test_case_id}"
             )
+
+            model_response = self._apply_reasoning_split(model_response)
 
             # Clean up defense instance
             self._cleanup_defense_instance(defense_instance)
@@ -300,6 +350,7 @@ class ResponseGenerator(BasePipeline):
                         model_name=model_name,
                         metadata=metadata,
                     )
+                    response = self._apply_reasoning_split(response)
                     responses.append(response)
                 elif defended_test_case.metadata.get(BaseDefense.META_KEY_SHOULD_BLOCK, False):
                     # Defense method blocked input
@@ -316,6 +367,7 @@ class ResponseGenerator(BasePipeline):
                         model_name=model_name,
                         metadata=metadata,
                     )
+                    response = self._apply_reasoning_split(response)
                     responses.append(response)
                 else:
                     # Need model inference
@@ -385,6 +437,8 @@ class ResponseGenerator(BasePipeline):
                             f"Post-processing defense {defense_name} failed: {e}"
                         )
                         response.metadata["postprocessing_error"] = str(e)
+
+            responses = [self._apply_reasoning_split(resp) for resp in responses]
 
             self.logger.info(f"Successfully batch generated {len(responses)} responses")
 
@@ -484,6 +538,8 @@ class ResponseGenerator(BasePipeline):
                 if remaining_cases:
                     inferred = model.generate_responses_batch(remaining_cases)
                     ready_responses.extend(inferred)
+
+                ready_responses = [self._apply_reasoning_split(r) for r in ready_responses]
 
                 all_responses.extend(ready_responses)
                 save_manager.add_results([r.to_dict() for r in ready_responses])

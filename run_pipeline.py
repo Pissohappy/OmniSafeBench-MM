@@ -120,6 +120,30 @@ class PipelineRunner:
         return results
 
 
+def validate_response_generation_options(config) -> bool:
+    """Validate newly added response_generation options."""
+    response_cfg = config.response_generation or {}
+
+    enable_reasoning_split = response_cfg.get("enable_reasoning_split", False)
+    if not isinstance(enable_reasoning_split, bool):
+        logging.error("❌ response_generation.enable_reasoning_split must be bool")
+        return False
+
+    strategy = response_cfg.get("reasoning_split_strategy", "auto")
+    if strategy not in {"auto", "tag_only", "off"}:
+        logging.error(
+            "❌ response_generation.reasoning_split_strategy must be one of: auto, tag_only, off"
+        )
+        return False
+
+    judge_use_final_answer = response_cfg.get("judge_use_final_answer", True)
+    if not isinstance(judge_use_final_answer, bool):
+        logging.error("❌ response_generation.judge_use_final_answer must be bool")
+        return False
+
+    return True
+
+
 def parse_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
@@ -204,6 +228,10 @@ def main():
         # Validate configuration
         if not validate_config(config):
             logger.error("❌ Configuration validation failed")
+            return 1
+
+        if not validate_response_generation_options(config):
+            logger.error("❌ Response generation option validation failed")
             return 1
 
     except Exception as e:

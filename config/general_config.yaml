@@ -15,6 +15,9 @@ experiment:
   random_seed: 42
   verbose: false
 response_generation:
+  enable_reasoning_split: false
+  reasoning_split_strategy: auto
+  judge_use_final_answer: true
   defenses:
   - None
   models:
