@@ -4,6 +4,7 @@ import inspect
 import backoff
 from core.base_classes import BaseModel as CoreBaseModel
 from core.data_formats import TestCase, ModelResponse
+from utils.response_parser import parse_reasoning_and_answer
 
 
 class BaseModel(CoreBaseModel):
@@ -189,12 +190,16 @@ class BaseModel(CoreBaseModel):
         # Generate response
         response = self.generate(messages, **kwargs)
         response_text = self._extract_text(response)
+        parsed_response = parse_reasoning_and_answer(response_text)
 
         return ModelResponse(
             test_case_id=test_case.test_case_id,
-            model_response=response_text,
+            model_response=parsed_response["raw_text"],
             model_name=self.model_name,
             metadata=test_case.metadata,
+            reasoning_trace=parsed_response["reasoning_trace"],
+            final_answer=parsed_response["final_answer"],
+            response_parse_status=parsed_response["parse_status"],
         )
 
     def _extract_text(self, response_obj: Any) -> str:
