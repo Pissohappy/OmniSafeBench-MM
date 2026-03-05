@@ -213,11 +213,15 @@ if __name__ == "__main__":
     #     "deepseek-vl2", "Qwen3-VL-30B-A3B-Instruct"
     # ]
 
-    # ALL_MODELS = [
-    #     "gemma-3-27b-it", "deepseek-vl2", "GLM-4.1V-9B-Thinking", "Qwen3-VL-30B-A3B-Instruct", "Kimi-VL-A3B-Instruct"
-    # ]
+    ALL_MODELS = [
+        "gemma-3-27b-it", 
+        "deepseek-vl2", 
+        # "GLM-4.1V-9B-Thinking", 
+        "Qwen3-VL-30B-A3B-Instruct", 
+        "Kimi-VL-A3B-Instruct"
+    ]
 
-    ALL_MODELS = ["GLM-4.1V-9B-Thinking"]
+    # ALL_MODELS = ["GLM-4.1V-9B-Thinking"]
 
     if args.models.strip():
         ALL_MODELS = [m.strip() for m in args.models.split(",") if m.strip()]
