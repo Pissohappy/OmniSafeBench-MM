@@ -215,9 +215,77 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 .claude
+.codex
 .vscode
 CLAUDE.md
 output/
+
+# OmniSafeBench-MM runtime outputs
+output_runs/
 output_sample/
-dataset/
 logs/
+*.log
+*.log.*
+
+# Generated benchmark artifacts and large local data
+dataset/*
+dataset/images/*
+dataset/**/*.json
+dataset/**/*.jsonl
+dataset/**/*.parquet
+dataset/**/*.csv
+dataset/**/*.tsv
+dataset/**/*.pkl
+dataset/**/*.pickle
+dataset/**/*.npz
+dataset/**/*.npy
+dataset/**/*.png
+dataset/**/*.jpg
+dataset/**/*.jpeg
+dataset/**/*.webp
+dataset/**/*.gif
+!dataset/README.md
+!dataset/data_test.json
+!dataset/apple.png
+!dataset/images/
+!dataset/images/2.png
+!dataset/images/4.png
+
+# Model weights, checkpoints, and tensor dumps
+models/**/*.pt
+models/**/*.pth
+models/**/*.ckpt
+models/**/*.safetensors
+models/**/*.bin
+checkpoints/
+weights/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+
+# Local/private config and secrets
+.env.*
+!.env.example
+*.local.yaml
+*.local.yml
+*.local.json
+config/*local*.yaml
+config/*local*.yml
+config/*secret*.yaml
+config/*secret*.yml
+secrets/
+
+# Temporary run configs created by batch scripts
+config/temp_*.yaml
+config/tmp_*.yaml
+config/general_config_*_tmp.yaml
+config/model_config_*_tmp.yaml
+
+# Local debugging
+debug*.ipynb
+*_tmp.sh
+scratch/
+tmp/
+*.tmp
